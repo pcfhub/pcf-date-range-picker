@@ -1,0 +1,20 @@
+<svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Template placeholder. The top face of the PCFHub mark on its own: one
+       component rather than the whole stack.
+
+       Geometry, ramp and inner diamond are the original's verbatim, shifted
+       down 19 so a face that sits at the top of the full mark is centred when
+       it stands alone. The gradient is declared in userSpaceOnUse, so its
+       coordinates move by the same 19; leaving them at the original 29 and 9
+       would slide the ramp off the shape.
+
+       Note: no double hyphen may appear in this comment, or the whole document
+       fails to parse as XML. -->
+  <defs>
+    <linearGradient id="mark-top" x1="8" y1="48" x2="88" y2="28" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A684FF"/><stop offset="0.6" stop-color="#7C86FF"/><stop offset="1" stop-color="#00BCFF"/>
+    </linearGradient>
+  </defs>
+  <path d="M48 28 88 48 48 68 8 48Z" fill="url(#mark-top)"/>
+  <path d="M48 41.5 61 48 48 54.5 35 48Z" fill="#F8FAFC" fill-opacity="0.92"/>
+</svg>
