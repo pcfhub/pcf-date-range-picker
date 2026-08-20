@@ -61,6 +61,14 @@ Strings ship in English, Spanish, French, German and Japanese. Built on the
 platform's own React 16.14 and Fluent 9, so neither is bundled — confirmed by the
 externals check below rather than by reading `package.json`.
 
+:warning: **In a canvas app, bind both dates to variables, never to values.** A
+code component does not write back to its own inputs — it raises `OnChange` and
+the app decides what to store. Bound to `Today()` or a fixed date, every edit is
+overwritten on the next render and the control looks locked. Set `startDate` to
+`varStart` and `endDate` to `varEnd` in the formula bar, and close the loop in
+`OnChange` with `Set(varStart, DateRangePicker1.startDate)`. Note the time unit
+in `DateAdd` is `TimeUnit.Days`, not `Days` — a bare `Days` will not resolve.
+
 ## On the hub
 
 The demo runs at **full** fidelity, which follows from the manifest declaring no

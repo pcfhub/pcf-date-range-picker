@@ -145,6 +145,30 @@ hours from either boundary.
 implementations, but confirm against `demo-harness/context/Parameters.ts` in the
 hub repo before publishing.
 
+## The Power Fx in the docs was wrong, and nothing could have caught it
+
+Reported from a real canvas app: `DateAdd(Today(), 7, Days)` does not save. The
+time unit has to be written **`TimeUnit.Days`** — a bare `Days` is not a name
+Power Fx resolves, and the formula fails with an unrecognised-identifier error.
+
+Three occurrences, across `docs/canvas.md` and `docs/examples.md`, all written
+in the same sitting and all wrong the same way.
+
+**Nothing in the pipeline could have caught this.** `npm run check` validates
+filenames, `pcfhub.json` and the control shape; the hub compiles the Markdown;
+neither reads a fenced code block. A Power Fx snippet in a doc page is
+untested code shipped to a maker, and it costs them more than a prose error
+because they paste it and get an error message about their own app.
+
+The same round also found the canvas *binding* instructions too thin. Saying
+"bind to a variable" is not the same as telling somebody where: the properties
+appear as `startDate` and `endDate` in the formula-bar dropdown and as their
+display names in the Advanced pane, and a maker who types a date into the
+Advanced pane has done something that looks correct and behaves as though the
+control is locked. `docs/canvas.md` now walks the four steps — create the
+variables, bind both properties, set the rest, close the loop in `OnChange` —
+rather than presenting a property table and assuming.
+
 ## Still open
 
 - `media/logo.png` is the template placeholder and `media.screenshots` is empty.

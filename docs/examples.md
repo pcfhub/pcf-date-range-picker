@@ -48,6 +48,7 @@ Bounds keep the browser's own calendar from offering a day outside the window.
 
 :::callout{type=info}
 In a canvas app these bounds can be formulas — `Today()` and
-`DateAdd(Today(), 90, Days)`. On a model-driven form they are fixed dates set by
-the maker, so a rolling window is better expressed with a business rule.
+`DateAdd(Today(), 90, TimeUnit.Days)`. On a model-driven form they are fixed
+dates set by the maker, so a rolling window is better expressed with a business
+rule.
 :::
