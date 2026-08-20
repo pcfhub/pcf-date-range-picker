@@ -1,0 +1,20 @@
+# dependencies
+/node_modules
+
+# pcf-scripts generates ManifestTypes from ControlManifest.Input.xml on build
+**/generated
+
+# control build output
+/out
+
+# msbuild output
+/bin
+/obj
+**/bin/
+**/obj/
+
+# release staging, produced by the workflow
+/artifacts
+
+*.pcfproj.user
+*.cdsproj.user

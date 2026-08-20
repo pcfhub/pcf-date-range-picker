@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest>
+  <!--
+    The version here is what the Power Platform upgrades on, and the release
+    workflow refuses to publish a tag that disagrees with it. Bump this in the
+    same commit as the tag.
+  -->
+  <control namespace="PCFHub"
+           constructor="DateRangePicker"
+           version="0.1.0"
+           display-name-key="DateRangePicker_Name"
+           description-key="DateRangePicker_Desc"
+           control-type="virtual">
+
+    <!--
+      Nothing here leaves the browser: no WebAPI, no device, no third-party
+      service. That is also what makes the hub demo `full` fidelity.
+    -->
+    <external-service-usage enabled="false" />
+
+    <!--
+      TWO bound properties, which is deliberate and is the exception to the
+      usual rule rather than a lapse from it.
+
+      The rule exists because a field control binds its *first* bound property
+      to the column it is placed on and renders every additional one as its own
+      column picker in the maker's configuration pane. For a control that
+      attaches to one column that second picker is a wrong question, which is
+      why pcf-choices-picker reverted to a single type-grouped property.
+
+      A date range genuinely is two columns. Placed on the start date, being
+      asked which column holds the end date is the only way for a maker to
+      express the thing — so here the second picker is the feature.
+
+      startDate is declared first because that is the column the control
+      attaches to.
+    -->
+    <property name="startDate"
+              display-name-key="startDate_Name"
+              description-key="startDate_Desc"
+              of-type="DateAndTime.DateOnly"
+              usage="bound"
+              required="true" />
+
+    <property name="endDate"
+              display-name-key="endDate_Name"
+              description-key="endDate_Desc"
+              of-type="DateAndTime.DateOnly"
+              usage="bound"
+              required="true" />
+
+    <!--
+      Outer bounds, optional. Typed as real dates rather than as text so a
+      canvas maker can bind a formula such as Today() instead of hand-typing a
+      format the control would then have to parse.
+    -->
+    <property name="minDate"
+              display-name-key="minDate_Name"
+              description-key="minDate_Desc"
+              of-type="DateAndTime.DateOnly"
+              usage="input"
+              required="false" />
+
+    <property name="maxDate"
+              display-name-key="maxDate_Name"
+              description-key="maxDate_Desc"
+              of-type="DateAndTime.DateOnly"
+              usage="input"
+              required="false" />
+
+    <property name="allowSameDay"
+              display-name-key="allowSameDay_Name"
+              description-key="allowSameDay_Desc"
+              of-type="TwoOptions"
+              usage="input"
+              required="false"
+              default-value="true" />
+
+    <property name="showDuration"
+              display-name-key="showDuration_Name"
+              description-key="showDuration_Desc"
+              of-type="TwoOptions"
+              usage="input"
+              required="false"
+              default-value="true" />
+
+    <resources>
+      <code path="index.ts" order="1" />
+      <css path="css/DateRangePicker.css" order="1" />
+      <resx path="strings/DateRangePicker.1033.resx" version="1.0.0" />
+      <resx path="strings/DateRangePicker.1031.resx" version="1.0.0" />
+      <resx path="strings/DateRangePicker.1036.resx" version="1.0.0" />
+      <resx path="strings/DateRangePicker.1041.resx" version="1.0.0" />
+      <resx path="strings/DateRangePicker.3082.resx" version="1.0.0" />
+      <platform-library name="React" version="16.14.0" />
+      <platform-library name="Fluent" version="9.46.2" />
+    </resources>
+
+    <!--
+      No <feature-usage>: the control reads context.mode, context.userSettings,
+      context.formatting and context.resources, none of which are gated.
+    -->
+  </control>
+</manifest>

@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Display names and descriptions for everything declared in
+    ControlManifest.Input.xml. PCFHub reads the manifest, so these strings are
+    what appear in the component's API reference on the hub as well as in the
+    maker's properties pane.
+
+    Copy this file to add a language — DateRangePicker.3082.resx for Spanish, and so
+    on — then list it under <resources> in the manifest.
+  -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <data name="DateRangePicker_Name" xml:space="preserve">
+    <value>Date Range Picker</value>
+  </data>
+  <data name="DateRangePicker_Desc" xml:space="preserve">
+    <value>A start and end date pair with range validation.</value>
+  </data>
+  <data name="startDate_Name" xml:space="preserve">
+    <value>Start date</value>
+  </data>
+  <data name="startDate_Desc" xml:space="preserve">
+    <value>The column holding the first day of the range.</value>
+  </data>
+  <data name="endDate_Name" xml:space="preserve">
+    <value>End date</value>
+  </data>
+  <data name="endDate_Desc" xml:space="preserve">
+    <value>The column holding the last day of the range.</value>
+  </data>
+  <data name="minDate_Name" xml:space="preserve">
+    <value>Earliest date</value>
+  </data>
+  <data name="minDate_Desc" xml:space="preserve">
+    <value>Optional. No day before this can be chosen.</value>
+  </data>
+  <data name="maxDate_Name" xml:space="preserve">
+    <value>Latest date</value>
+  </data>
+  <data name="maxDate_Desc" xml:space="preserve">
+    <value>Optional. No day after this can be chosen.</value>
+  </data>
+  <data name="allowSameDay_Name" xml:space="preserve">
+    <value>Allow same day</value>
+  </data>
+  <data name="allowSameDay_Desc" xml:space="preserve">
+    <value>Allow the range to start and end on the same day.</value>
+  </data>
+  <data name="showDuration_Name" xml:space="preserve">
+    <value>Show duration</value>
+  </data>
+  <data name="showDuration_Desc" xml:space="preserve">
+    <value>Show how many days the range covers.</value>
+  </data>
+  <data name="DateRangePicker_StartLabel" xml:space="preserve">
+    <value>From</value>
+  </data>
+  <data name="DateRangePicker_EndLabel" xml:space="preserve">
+    <value>To</value>
+  </data>
+  <data name="DateRangePicker_EndBeforeStart" xml:space="preserve">
+    <value>The end date cannot be before the start date.</value>
+  </data>
+  <data name="DateRangePicker_SameDayNotAllowed" xml:space="preserve">
+    <value>The range must cover more than one day.</value>
+  </data>
+  <data name="DateRangePicker_BeforeMin" xml:space="preserve">
+    <value>That date is earlier than this range allows.</value>
+  </data>
+  <data name="DateRangePicker_AfterMax" xml:space="preserve">
+    <value>That date is later than this range allows.</value>
+  </data>
+  <data name="DateRangePicker_Duration" xml:space="preserve">
+    <value>{0} days, {1} to {2}</value>
+  </data>
+  <data name="DateRangePicker_NoAccess" xml:space="preserve">
+    <value>You do not have access to these values.</value>
+  </data>
+</root>

@@ -1,0 +1,150 @@
+name: Release
+
+# A pushed tag is the whole trigger. PCFHub's contract is that tagging a
+# component repository publishes a documented version on the hub with no manual
+# steps, and this workflow is the half of that contract that lives here: build,
+# pack both solution types, attach them to a GitHub Release under names the hub
+# recognises.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build and release'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # Windows, not Linux. The solution is packed by msbuild through
+    # Microsoft.PowerApps.MSBuild.Solution, a .NET Framework toolchain — there
+    # is no Linux runner that can produce the zip.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: microsoft/setup-msbuild@v2
+
+      # The version in the control manifest is what the platform upgrades on. A
+      # tag that disagrees with it produces a release the hub records under one
+      # number and Dataverse installs as another, and nobody notices until an
+      # upgrade silently does nothing. Checked before anything is built, so a
+      # mismatch costs seconds rather than the whole pack.
+      - name: Check the tag matches the manifests
+        shell: pwsh
+        run: |
+          $tag = "${{ github.event.inputs.tag || github.ref_name }}" -replace '^v', ''
+
+          $control = ([xml](Get-Content DateRangePicker/ControlManifest.Input.xml)).manifest.control.version
+          if ($tag -ne $control) {
+            throw "Tag $tag does not match ControlManifest version $control."
+          }
+
+          $solution = ([xml](Get-Content Solution/src/Other/Solution.xml)).ImportExportXml.SolutionManifest.Version
+          if ($tag -ne $solution) {
+            throw "Tag $tag does not match Solution.xml version $solution."
+          }
+
+      # `npm ci` rather than `npm install`: the lockfile is what was tested, and
+      # a release is the worst moment to resolve a new transitive version.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the control
+        run: npm run build
+
+      # /restore is only needed on a cold checkout, which every CI run is.
+      - name: Pack the solution
+        run: msbuild /t:build /restore /p:configuration=Release
+        working-directory: Solution
+
+      # PCFHub matches release assets by glob, and with no `release.artifacts`
+      # block in pcfhub.json it uses its defaults: `*_managed.zip` and
+      # `*_unmanaged.zip`. msbuild names the managed zip to suit, but names the
+      # unmanaged one after the *project file* — `Solution.zip` for this
+      # template's Solution.cdsproj, not the solution's <UniqueName> — which
+      # matches neither pattern and would leave the hub's unmanaged download
+      # empty. Renaming it here is why pcfhub.json needs no artifact patterns.
+      #
+      # Found by glob rather than by name so that renaming the solution does not
+      # quietly stop producing artifacts.
+      - name: Collect the artifacts
+        shell: pwsh
+        run: |
+          $out = 'Solution/bin/Release'
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+
+          $managed = Get-ChildItem "$out/*_managed.zip" | Select-Object -First 1
+          if (-not $managed) { throw "No managed solution in $out." }
+
+          $unmanaged = Get-ChildItem "$out/*.zip" |
+            Where-Object { $_.Name -notlike '*_managed.zip' } |
+            Select-Object -First 1
+          if (-not $unmanaged) { throw "No unmanaged solution in $out." }
+
+          Copy-Item $managed.FullName artifacts/
+          Copy-Item $unmanaged.FullName ("artifacts/" + $unmanaged.BaseName + "_unmanaged.zip")
+
+          # The demo bundle is the production bundle.js under out/controls —
+          # written by the pack above, not by `npm run build`.
+          # DateRangePicker.pcfproj sets PcfBuildMode=production, so msbuild
+          # rebuilds into the same directory and overwrites the earlier
+          # development output. Worth being precise about: reading this the
+          # other way round suggests an unminified bundle is being shipped to
+          # the hub, which would be a bug rather than the current behaviour.
+          #
+          # A standard pcf-scripts build calls
+          # window.ComponentFramework.registerControl if present, which is
+          # the exact hook PCFHub's demo harness boots against, so there is
+          # nothing hub-specific to build here. Attached under its own name
+          # because PCFHub's ingestion matches a demo_bundle release asset
+          # literally named "bundle.js" by default. Attaching it costs
+          # nothing even while pcfhub.json's demo.fidelity is still "none" —
+          # the hub only starts showing the demo once fidelity says to.
+          $bundle = Get-ChildItem out/controls -Filter bundle.js -Recurse | Select-Object -First 1
+          if (-not $bundle) { throw "No bundle.js under out/controls after the pack." }
+
+          # Same 5 MB default web resource ceiling build.yml checks. Repeated
+          # here because this is the artifact people actually install, and a
+          # tag can be cut from a commit that never went through build.yml.
+          $limit = 5242880
+          if ($bundle.Length -gt $limit) {
+            throw "bundle.js is $($bundle.Length) bytes, over the $limit byte default Dataverse web resource limit."
+          }
+
+          Copy-Item $bundle.FullName artifacts/bundle.js
+
+          Get-ChildItem artifacts | ForEach-Object { Write-Host "attaching $($_.Name) ($($_.Length) bytes)" }
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          files: |
+            artifacts/*.zip
+            artifacts/bundle.js
+
+      # Nothing notifies PCFHub from here, on purpose. Publishing the release
+      # above fires GitHub's own `release` webhook, which the hub authenticates
+      # by HMAC over the raw delivery body — a curl from this workflow could not
+      # produce that signature, and adding a second unauthenticated endpoint to
+      # accept one would be a worse trade than the hourly sweep that already
+      # backs the webhook up.
+      #
+      # So: configure the webhook once on this repository (Settings → Webhooks,
+      # payload URL `https://pcfhub.dev/webhooks/github`, content type
+      # `application/json`, secret shared with the hub, events: Releases and
+      # Pushes) and a tag publishes within seconds. Without it, within the hour.

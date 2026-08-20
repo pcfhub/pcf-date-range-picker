@@ -1,0 +1,72 @@
+/*
+ * Every rule is scoped under the control's own class.
+ *
+ * A code component shares a document with the host app and with every other
+ * control on the form, so a bare `input { … }` here restyles the page it was
+ * dropped onto. The platform does not sandbox this for you.
+ */
+
+.DateRangePicker {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/*
+ * Wraps rather than clipping. A form column is narrower than two date fields
+ * side by side expect, and a non-wrapping row would push the second field out
+ * of its cell — the failure pcf-star-rating shipped with at max 20.
+ */
+.DateRangePicker-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.DateRangePicker-fields > * {
+    /* min-width: 0 because a flex item defaults to min-width: auto and will
+       not shrink below its content, which is what makes a row overflow. */
+    flex: 1 1 10rem;
+    min-width: 0;
+}
+
+.DateRangePicker-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 5px 8px;
+    /* Inherit rather than declare: the host controls the form's type scale, and
+       a hard-coded family is what makes a control look pasted in. */
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    border: 1px solid rgba(0, 0, 0, 0.25);
+    border-radius: 4px;
+}
+
+.DateRangePicker-input:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 1px;
+}
+
+.DateRangePicker-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/*
+ * The control's own range message, and the no-access state. System colour
+ * keywords rather than hex values, so both survive a themed environment and
+ * Windows high contrast.
+ */
+.DateRangePicker-message {
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: LinkText;
+}
+
+.DateRangePicker-duration {
+    margin: 6px 0 0;
+    font-size: 12px;
+    opacity: 0.8;
+}

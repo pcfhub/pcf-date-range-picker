@@ -1,0 +1,106 @@
+{
+    "schemaVersion": 1,
+
+    "slug": "pcf-date-range-picker",
+    "name": "Date Range Picker",
+    "tagline": "A start and end date pair with range validation.",
+    "category": "input",
+    "tags": ["date", "range", "validation", "react", "fluent"],
+
+    "control": {
+        "namespace": "PCFHub",
+        "constructor": "DateRangePicker",
+        "type": "virtual",
+        "framework": "react_virtual",
+        "manifestPath": "DateRangePicker/ControlManifest.Input.xml"
+    },
+
+    "links": {
+        "homepage": "https://github.com/pcfhub/pcf-date-range-picker",
+        "support": "https://github.com/pcfhub/pcf-date-range-picker/issues",
+        "license": "MIT"
+    },
+
+    "docs": {
+        "path": "docs"
+    },
+
+    "media": {
+        "logo": "media/logo.png",
+        "screenshots": []
+    },
+
+    "demo": {
+        "fidelity": "full",
+        "bundle": "out/controls/DateRangePicker/bundle.js",
+        "styles": ["out/controls/DateRangePicker/css/DateRangePicker.css"],
+        "presets": [
+            {
+                "slug": "default",
+                "name": "Default",
+                "description": "A nine-day range with the duration shown beneath it.",
+                "props": {
+                    "startDate": "2026-08-20T12:00:00",
+                    "endDate": "2026-08-28T12:00:00",
+                    "minDate": null,
+                    "maxDate": null,
+                    "allowSameDay": true,
+                    "showDuration": true
+                },
+                "isDefault": true
+            },
+            {
+                "slug": "same-day",
+                "name": "Single day",
+                "description": "Start and end on the same day, which this configuration allows.",
+                "props": {
+                    "startDate": "2026-08-20T12:00:00",
+                    "endDate": "2026-08-20T12:00:00",
+                    "minDate": null,
+                    "maxDate": null,
+                    "allowSameDay": true,
+                    "showDuration": true
+                }
+            },
+            {
+                "slug": "invalid",
+                "name": "End before start",
+                "description": "The validation state. The pair is shown but never written back, so the columns cannot hold a backwards range.",
+                "props": {
+                    "startDate": "2026-08-28T12:00:00",
+                    "endDate": "2026-08-20T12:00:00",
+                    "minDate": null,
+                    "maxDate": null,
+                    "allowSameDay": true,
+                    "showDuration": true
+                }
+            },
+            {
+                "slug": "bounded",
+                "name": "Within bounds",
+                "description": "Outer limits set, so the browser's own calendar will not offer a day outside them.",
+                "props": {
+                    "startDate": "2026-09-07T12:00:00",
+                    "endDate": "2026-09-11T12:00:00",
+                    "minDate": "2026-09-01T12:00:00",
+                    "maxDate": "2026-09-30T12:00:00",
+                    "allowSameDay": false,
+                    "showDuration": true
+                }
+            },
+            {
+                "slug": "empty",
+                "name": "Nothing chosen",
+                "description": "Both columns empty. A half-filled pair is not an error, so no message shows until both dates exist.",
+                "props": {
+                    "startDate": null,
+                    "endDate": null,
+                    "minDate": null,
+                    "maxDate": null,
+                    "allowSameDay": true,
+                    "showDuration": true
+                }
+            }
+        ]
+    }
+}

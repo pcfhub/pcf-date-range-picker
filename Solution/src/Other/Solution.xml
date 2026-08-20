@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ImportExportXml version="9.1.0.643" SolutionPackageVersion="9.1" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <SolutionManifest>
+    <!--
+      The unique name of the solution in Dataverse, and the name msbuild gives
+      the packed zip. Changing it after the first release makes the next import
+      a *second* solution rather than an upgrade of the first, so it is fixed
+      once, at setup, and never again.
+    -->
+    <UniqueName>DateRangePickerSolution</UniqueName>
+    <LocalizedNames>
+      <LocalizedName description="Date Range Picker" languagecode="1033" />
+    </LocalizedNames>
+    <Descriptions>
+      <Description description="A start and end date pair with range validation." languagecode="1033" />
+    </Descriptions>
+    <!--
+      Kept in step with ControlManifest.Input.xml and with the git tag. The
+      release workflow checks the tag against the control manifest; this is the
+      third copy, and the one Dataverse shows in the solutions list.
+    -->
+    <Version>0.1.0</Version>
+    <!-- Managed(1)/Unmanaged(0)/Both(2). Both, to match the cdsproj. -->
+    <Managed>2</Managed>
+    <Publisher>
+      <!--
+        The publisher is permanent. Every component in the solution carries the
+        customization prefix below in its logical name, so changing either one
+        later orphans everything already installed in a customer environment.
+      -->
+      <UniqueName>PCFHub</UniqueName>
+      <LocalizedNames>
+        <LocalizedName description="PCFHub" languagecode="1033" />
+      </LocalizedNames>
+      <Descriptions>
+        <Description description="PCFHub" languagecode="1033" />
+      </Descriptions>
+      <EMailAddress xsi:nil="true"></EMailAddress>
+      <SupportingWebsiteUrl xsi:nil="true"></SupportingWebsiteUrl>
+      <CustomizationPrefix>pcfhu</CustomizationPrefix>
+      <CustomizationOptionValuePrefix>58107</CustomizationOptionValuePrefix>
+      <Addresses>
+        <Address>
+          <AddressNumber>1</AddressNumber>
+          <AddressTypeCode>1</AddressTypeCode>
+          <City xsi:nil="true"></City>
+          <County xsi:nil="true"></County>
+          <Country xsi:nil="true"></Country>
+          <Fax xsi:nil="true"></Fax>
+          <FreightTermsCode xsi:nil="true"></FreightTermsCode>
+          <ImportSequenceNumber xsi:nil="true"></ImportSequenceNumber>
+          <Latitude xsi:nil="true"></Latitude>
+          <Line1 xsi:nil="true"></Line1>
+          <Line2 xsi:nil="true"></Line2>
+          <Line3 xsi:nil="true"></Line3>
+          <Longitude xsi:nil="true"></Longitude>
+          <Name xsi:nil="true"></Name>
+          <PostalCode xsi:nil="true"></PostalCode>
+          <PostOfficeBox xsi:nil="true"></PostOfficeBox>
+          <PrimaryContactName xsi:nil="true"></PrimaryContactName>
+          <ShippingMethodCode>1</ShippingMethodCode>
+          <StateOrProvince xsi:nil="true"></StateOrProvince>
+          <Telephone1 xsi:nil="true"></Telephone1>
+          <Telephone2 xsi:nil="true"></Telephone2>
+          <Telephone3 xsi:nil="true"></Telephone3>
+          <TimeZoneRuleVersionNumber xsi:nil="true"></TimeZoneRuleVersionNumber>
+          <UPSZone xsi:nil="true"></UPSZone>
+          <UTCOffset xsi:nil="true"></UTCOffset>
+          <UTCConversionTimeZoneCode xsi:nil="true"></UTCConversionTimeZoneCode>
+        </Address>
+      </Addresses>
+    </Publisher>
+    <RootComponents />
+    <MissingDependencies />
+  </SolutionManifest>
+</ImportExportXml>
