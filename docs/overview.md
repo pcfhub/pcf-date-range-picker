@@ -11,6 +11,8 @@ they make a range, and writes both back to their own columns. It replaces the
 usual arrangement of two unrelated date fields that only disagree with each other
 once somebody saves.
 
+::image{src=media/screenshot.png alt="From and To date inputs side by side, with the duration 21 days, 8/26/2026 to 9/15/2026 written beneath them" zoom}
+
 ## Why this one
 
 - **It knows the two dates are related.** An end before the start is caught in the
