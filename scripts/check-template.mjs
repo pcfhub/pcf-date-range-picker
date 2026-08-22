@@ -21,15 +21,25 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'out', 'bin', 'obj', 'generated']);
 
-// The setup script names every token it replaces, so it always "contains
-// placeholders" — it is the thing that removes them.
-const SKIP_PATHS = new Set(['scripts/setup.mjs', 'scripts/check-template.mjs']);
+// The adoption scripts name every token they replace, so they always "contain
+// placeholders" — they are the things that remove them. setup.mjs deletes
+// adopt.mjs on adoption, but a repo may still be mid-flight when this runs.
+const SKIP_PATHS = new Set(['scripts/setup.mjs', 'scripts/adopt.mjs', 'scripts/check-template.mjs']);
 
 const SKIP_EXTENSIONS = /\.(png|jpe?g|gif|webp|avif|mp4|webm|zip|ico|woff2?)$/i;
 
 const PLACEHOLDER = /__[A-Z][A-Z0-9_]*__/g;
 
 const problems = [];
+
+/*
+ * Findings that print but do not fail. Everything in `problems` is something
+ * the hub or the build will get wrong; a warning is something a human should
+ * look at, reached by a heuristic that can be wrong. Keeping the two apart is
+ * the point — a check that fails on a guess gets disabled, and takes the
+ * reliable checks with it.
+ */
+const warnings = [];
 
 // ------------------------------------------------------------- placeholders
 
@@ -159,6 +169,64 @@ if (manifestPath && exists(join(root, manifestPath))) {
     }
 }
 
+// ------------------------------------------------------- declared features
+//
+// Every <uses-feature> becomes an install-time permission prompt for the
+// customer, so a control that declares a feature it never calls is asking for
+// consent it does not need. That costs nothing to detect and is invisible
+// otherwise: nothing fails, the prompt just appears.
+//
+// Note this is *not* the stock `pac pcf init` manifest, which ships the
+// feature list inside an <!-- UNCOMMENT TO ENABLE --> block. Those are not
+// declared and cost nothing. This fires only on a feature-usage block someone
+// actually enabled and then stopped using.
+//
+// A warning rather than a problem, because this is a regex over source and a
+// feature can be reached in ways it cannot see — destructured off `context`,
+// or from a helper outside the control directory. The test is deliberately
+// weak: the accessor name appearing *anywhere* in the control sources,
+// comments included, is enough to stay quiet. Over-matching costs a missed
+// warning; under-matching would fail a build that is fine.
+
+const ACCESSORS = { WebAPI: 'webAPI', Utility: 'utils' };
+
+if (manifestPath && exists(join(root, manifestPath))) {
+    // Comments stripped first. A commented-out <uses-feature> is not declared,
+    // and this template ships its examples inside a comment — scanning the raw
+    // file would warn about every freshly scaffolded control, which is the
+    // fastest way to teach people to ignore the warning.
+    const xml = readFileSync(join(root, manifestPath), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+    const declared = [...xml.matchAll(/<uses-feature\s+name="([^"]+)"/g)].map((match) => match[1]);
+
+    if (declared.length > 0) {
+        const controlDir = manifestPath.split(/[\\/]/)[0];
+        let sources = '';
+
+        for (const path of walk(join(root, controlDir))) {
+            if (/\.tsx?$/.test(path)) {
+                sources += readFileSync(path, 'utf8');
+            }
+        }
+
+        // Every Device.* feature is reached through the one accessor, so they
+        // stand or fall together. A feature this map does not know is skipped
+        // rather than guessed at.
+        const unused = declared.filter((feature) => {
+            const accessor = feature.startsWith('Device.') ? 'device' : ACCESSORS[feature];
+
+            return accessor !== undefined && !new RegExp(`\\b${accessor}\\b`).test(sources);
+        });
+
+        if (unused.length > 0) {
+            warnings.push(
+                `${manifestPath} declares ${unused.length} <uses-feature> that nothing appears to use: ` +
+                `${unused.join(', ')}. Each one is an install-time permission prompt for the customer. ` +
+                'Delete the ones the control does not call.',
+            );
+        }
+    }
+}
+
 // The hub reads docs from the default branch and reports any file it does not
 // recognise, so a misnamed page is published nowhere and mentioned only in an
 // ingestion run nobody is watching.
@@ -233,6 +301,29 @@ if (fidelity === 'limited' && !(manifest.demo?.limitations?.length > 0)) {
     );
 }
 
+// The fixture is the entire dataset the demo runs against, and it is committed
+// source rather than build output — so unlike demo.bundle below, there is no
+// "clean checkout has not built yet" case to exempt. A typo costs the whole
+// demo: the hub notes it in an ingestion run nobody is watching and the control
+// renders no rows.
+const datasetFixture = manifest.demo?.datasetFixture;
+
+if (datasetFixture && !exists(join(root, datasetFixture))) {
+    problems.push(
+        `pcfhub.json names demo.datasetFixture as "${datasetFixture}", which does not exist.`,
+    );
+}
+
+// Deliberately not checked: that a dataset control *has* a fixture. A dataset
+// control with fidelity "none" is a legitimate state, and a rule forcing one
+// would be wrong more often than right.
+if (datasetFixture && type === 'field') {
+    problems.push(
+        'pcfhub.json declares demo.datasetFixture, but control.type is "field". ' +
+        'The hub reads it only for a dataset control, so it would be ignored.',
+    );
+}
+
 // The demo bundle is written by the build, so it is only checked when one has
 // already run — otherwise a clean checkout would fail for having built nothing.
 const demoPaths = [
@@ -260,9 +351,13 @@ if (problems.length > 0) {
     process.exit(1);
 }
 
+for (const warning of warnings) {
+    console.warn(`\n  warning: ${warning}`);
+}
+
 console.log(
-    'Template adopted, pcfhub.json readable, control shape agrees with the manifest, ' +
-        'docs named correctly, media present.',
+    `${warnings.length > 0 ? '\n' : ''}Template adopted, pcfhub.json readable, control shape agrees ` +
+        'with the manifest, docs named correctly, media present.',
 );
 
 // ------------------------------------------------------------------ helpers
