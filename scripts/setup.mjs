@@ -8,7 +8,7 @@
  *     --control ColorPicker --namespace PCFHub --slug pcf-color-picker \
  *     --title "Color Picker" --tagline "A WCAG-compliant colour picker." \
  *     --category pickers --owner pcfhub --repo pcf-color-picker \
- *     --publisher PCFHub --prefix pcfhu
+ *     --publisher PCFHub --prefix pcfhub
  *
  * Under `--yes` every value must be answerable without a prompt, and TAGLINE,
  * CATEGORY and OWNER have no `derive` — so a short example that omits them does
