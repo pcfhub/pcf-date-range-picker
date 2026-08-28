@@ -12,7 +12,8 @@
     "rebuild": "pcf-scripts rebuild",
     "start": "pcf-scripts start",
     "refreshTypes": "pcf-scripts refreshTypes",
-    "lint": "eslint DateRangePicker --ext .ts,.tsx"
+    "lint": "eslint DateRangePicker --ext .ts,.tsx",
+    "smoke": "node dev/smoke.js"
   },
   "devDependencies": {
     "@fluentui/react-components": "9.46.2",

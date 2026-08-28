@@ -1,0 +1,179 @@
+/*
+ * The platform, stood in for: everything this control reads off `context`.
+ *
+ * ---
+ *
+ * **Why this exists when `npm start` already hosts a field control.**
+ *
+ * `pcf-start` gives you a property panel and a real render. What it cannot do
+ * is put a control with *two* bound columns into the states that only two
+ * columns produce:
+ *
+ *   - **security per column** — a user can be denied one and allowed the
+ *     other, so `startReadable` and `endReadable` are not one flag. No other
+ *     control in this repository has had to think about that;
+ *   - **the re-render that discards an edit** — the platform hands down a
+ *     fresh `Date` object on every pass, so identity comparison always reports
+ *     a change and an unguarded control re-adopts the platform's value over the
+ *     edit that caused the callback;
+ *   - **a range that breaks a rule** — shown to the user, never handed to the
+ *     platform, so the columns cannot come to hold a backwards pair.
+ *
+ * ---
+ *
+ * **A stub must never be more capable than the thing it stands in for.**
+ * `security` is `undefined` on a column with no FLS profile, which is the
+ * common case and the one unguarded code breaks on. `errorMessage` is absent
+ * unless `error` is set, because the platform sets no message when there is no
+ * error. Dates are built from **local** components, never parsed from
+ * `'2026-03-07'` — that form parses as UTC midnight and would make the fixture
+ * itself carry the bug this control exists to avoid.
+ */
+
+(function (root, factory) {
+    'use strict';
+
+    var api = factory();
+
+    if (typeof module === 'object' && module.exports) {
+        module.exports = api;
+    }
+
+    if (root) {
+        root.__pcfHost = api;
+    }
+})(typeof window !== 'undefined' ? window : null, function () {
+    'use strict';
+
+    var STRINGS = {
+        DateRangePicker_Name: 'Date Range Picker',
+        DateRangePicker_StartLabel: 'From',
+        DateRangePicker_EndLabel: 'To',
+        DateRangePicker_EndBeforeStart: 'The end date is before the start date.',
+        DateRangePicker_SameDayNotAllowed: 'The range must cover more than one day.',
+        DateRangePicker_BeforeMin: 'That is earlier than the earliest allowed date.',
+        DateRangePicker_AfterMax: 'That is later than the latest allowed date.',
+        DateRangePicker_Duration: '{0} days',
+        DateRangePicker_NoAccess: 'You do not have access to this value.',
+    };
+
+    var SECURITY = {
+        none: undefined,
+        'read-only': { editable: false, readable: true, secured: true },
+        'no-access': { editable: false, readable: false, secured: true },
+    };
+
+    /** Local components, deliberately. See the header. */
+    function localDate(year, month, day) {
+        return new Date(year, month - 1, day);
+    }
+
+    var DEFAULTS = {
+        /** The bound columns. `null` is a cleared column. */
+        start: localDate(2026, 3, 2),
+        end: localDate(2026, 3, 6),
+        /** The boundary inputs. */
+        min: null,
+        max: null,
+        allowSameDay: true,
+        showDuration: true,
+        /** Security, per column — they are independent. */
+        startSecurity: 'none',
+        endSecurity: 'none',
+        /** The platform's own validation, per column. */
+        startError: false,
+        endError: false,
+        errorMessage: 'A business rule rejected this date.',
+        label: 'Booking period',
+        visible: true,
+        /** The form's read-only state. Not the columns' — see security. */
+        disabled: false,
+        rtl: false,
+    };
+
+    function property(raw, security, error, message) {
+        return {
+            raw: raw,
+            security: SECURITY[security],
+            error: error,
+            // The platform sets no message when there is no error.
+            errorMessage: error ? message : undefined,
+            type: 'DateAndTime.DateOnly',
+        };
+    }
+
+    function createContext(options) {
+        var o = Object.assign({}, DEFAULTS, options || {});
+
+        var getString =
+            o.getString
+            || function (key) {
+                return STRINGS[key] !== undefined ? STRINGS[key] : key;
+            };
+
+        return {
+            parameters: {
+                startDate: property(o.start, o.startSecurity, o.startError, o.errorMessage),
+                endDate: property(o.end, o.endSecurity, o.endError, o.errorMessage),
+                minDate: { raw: o.min, type: 'DateAndTime.DateOnly' },
+                maxDate: { raw: o.max, type: 'DateAndTime.DateOnly' },
+                allowSameDay: { raw: o.allowSameDay, type: 'TwoOptions' },
+                showDuration: { raw: o.showDuration, type: 'TwoOptions' },
+            },
+
+            mode: {
+                isVisible: o.visible,
+                isControlDisabled: o.disabled,
+                label: o.label,
+            },
+
+            resources: { getString: getString },
+
+            /*
+             * Marked rather than plausible: a real `formatDateShort` returns
+             * something like "02/03/2026", which is indistinguishable in a test
+             * from the same string built by hand with `Intl`. "fmt:2026-03-02"
+             * can only have come through `context.formatting`, which is what
+             * makes the control agree with the rest of the form rather than
+             * merely look right.
+             *
+             * Built from local components for the reason in the header.
+             */
+            formatting: {
+                formatDateShort: function (value) {
+                    return (
+                        'fmt:'
+                        + value.getFullYear()
+                        + '-'
+                        + String(value.getMonth() + 1).padStart(2, '0')
+                        + '-'
+                        + String(value.getDate()).padStart(2, '0')
+                    );
+                },
+            },
+
+            userSettings: { isRTL: o.rtl, languageId: 1033 },
+        };
+    }
+
+    function captureRegistration(global) {
+        var box = { name: null, ctor: null };
+
+        global.ComponentFramework = global.ComponentFramework || {};
+        global.ComponentFramework.registerControl = function (fullName, ctor) {
+            box.name = fullName;
+            box.ctor = ctor;
+        };
+
+        return box;
+    }
+
+    return {
+        STRINGS: STRINGS,
+        SECURITY: SECURITY,
+        DEFAULTS: DEFAULTS,
+        localDate: localDate,
+        createContext: createContext,
+        captureRegistration: captureRegistration,
+    };
+});

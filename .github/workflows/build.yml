@@ -22,9 +22,3 @@ on:
 jobs:
   build:
     uses: pcfhub/_template/.github/workflows/build-reusable.yml@v1
-    with:
-      # No dev/ directory in this repository yet, so there is no smoke suite to
-      # run. That is a gap in what this control asserts, not a property of the
-      # control: backporting a rig from _template is tracked separately, and
-      # this line is the only place the gap is written down.
-      smoke: false
