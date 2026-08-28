@@ -1,5 +1,18 @@
 name: Build
 
+# The steps live in build-reusable.yml, shared by every component repository, so
+# a fix to the build reaches all of them instead of the one that happened to be
+# edited. What stays here is only what differs between repositories.
+#
+# Pinned to @v1 rather than @main — a build that can change without
+# warning is one you cannot bisect. The shared workflow lives in
+# pcfhub/_template; open an issue there rather than forking a copy back
+# into this repository, which is the drift it was built to end.
+#
+# Every input it takes defaults to the strict value. If this repository
+# ever needs to skip a step — no dev/ directory, so no smoke suite —
+# say so here with a comment, where a reader will find it.
+
 on:
   push:
     branches: [main]
@@ -7,74 +20,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Cheap and first. Everything below takes minutes on a Windows runner, and a
-  # repository still carrying template placeholders fails all of it for one
-  # reason that is easier to read here.
-  template:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Check the template was adopted
-        run: node scripts/check-template.mjs
-
   build:
-    needs: template
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - uses: microsoft/setup-msbuild@v2
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Build the control
-        run: npm run build
-
-      # Packing on every push, not only on a tag. A solution that only fails to
-      # pack at release time fails while somebody is waiting to ship it, and the
-      # cause is usually a change made days earlier.
-      #
-      # This is also the only step that builds the control the way it ships:
-      # DateRangePicker.pcfproj sets PcfBuildMode=production, so msbuild rebuilds
-      # into out/controls and overwrites what `npm run build` left there. A
-      # production build is not merely a minified development build — webpack
-      # applies optimisations that can fail on code development mode tolerates —
-      # so a green `npm run build` above is not evidence the shipping bundle
-      # compiles.
-      - name: Pack the solution
-        run: msbuild /t:build /restore /p:configuration=Release
-        working-directory: Solution
-
-      # A control is served as a single web resource, and Dataverse rejects one
-      # larger than 5 MB by default. Without this the failure appears as a
-      # solution import error in somebody's environment, long after the commit
-      # that caused it — and bundling a large dependency can cross the line in
-      # one step.
-      #
-      # After the pack, because that is the step that writes the production
-      # bundle. Administrators can raise the ceiling to 128 MB via Power
-      # Platform admin centre -> Environments -> Settings -> Email, but a
-      # component that needs that is harder to deploy, so treat it as a limit.
-      - name: Check the bundle fits a default environment
-        shell: pwsh
-        run: |
-          $limit = 5242880
-          $bundle = Get-ChildItem out/controls -Filter bundle.js -Recurse | Select-Object -First 1
-          if (-not $bundle) { throw "No bundle.js under out/controls after the pack." }
-
-          Write-Host "bundle.js is $($bundle.Length) bytes (limit $limit)"
-          if ($bundle.Length -gt $limit) {
-            throw "bundle.js is $($bundle.Length) bytes, over the $limit byte default Dataverse web resource limit."
-          }
+    uses: pcfhub/_template/.github/workflows/build-reusable.yml@v1
+    with:
+      # No dev/ directory in this repository yet, so there is no smoke suite to
+      # run. That is a gap in what this control asserts, not a property of the
+      # control: backporting a rig from _template is tracked separately, and
+      # this line is the only place the gap is written down.
+      smoke: false
