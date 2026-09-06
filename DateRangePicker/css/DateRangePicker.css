@@ -235,8 +235,17 @@
      * PopoverSurface does not scroll on its own — so the Done and Clear buttons
      * were simply unreachable below the fold. Scrolling the surface is the
      * smallest fix that keeps every control reachable at every size.
+     *
+     * **The floor is the load-bearing part, and it was learned the hard way.**
+     * A plain `min(80vh, 40rem)` reads as "most of the viewport, capped" and is
+     * fine until the viewport is tiny — and one is: PCFHub renders the demo in
+     * an iframe sized to the control's resting height, 68px on this control.
+     * 80vh of 68px is 54px, so the calendar collapsed into a scrolling sliver
+     * about one row tall. Refusing to go below 22rem means a short frame gets a
+     * calendar that is merely clipped rather than one that is destroyed; the
+     * clipping itself is the frame's to fix, and cannot be fixed from here.
      */
-    max-height: min(80vh, 40rem);
+    max-height: max(22rem, min(80vh, 40rem));
     overflow-y: auto;
     font-family: var(--fontFamilyBase, "Segoe UI", sans-serif);
     font-size: var(--fontSizeBase300, 14px);

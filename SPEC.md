@@ -276,6 +276,36 @@ Two things it caught that were not bugs in the control:
   it. `color-scheme`, set from `fluentDesignLanguage.isDarkTheme` rather than
   from `prefers-color-scheme`, is the one property that fixes it.
 
+### The demo frame clips a floating layer, and one of those was self-inflicted
+
+Reported against the published v0.2.0 demo: clicking the field opened the
+calendar as a scrolling sliver about one row tall, inside the control's own
+box. Two causes, and separating them mattered.
+
+**The frame.** `pcfhub.dev` renders the demo in a cross-origin iframe from
+`demos.pcfhub.dev`, sized to the control's resting height — **68px** for this
+control — with `overflow: hidden` on the element around it. A popover portals
+to its document's `body`, and **nothing can paint outside an iframe**, so no
+change here can make the calendar escape it. That is the hub's to fix, and it
+is not specific to this control: any component with a popover, dropdown, menu
+or tooltip has the same problem in that frame.
+
+**The sliver, which was ours.** `max-height: min(80vh, 40rem)` on the popover
+surface was added so a phone could scroll to reach the footer. In a 68px frame
+`80vh` is 54px, so the rule that was meant to cap the calendar destroyed it —
+measured at 54.4px of max-height against 335px of content. A floor,
+`max(22rem, min(80vh, 40rem))`, restores the full 337px; the frame still clips
+it, but the document then reports a 397px scroll height, which is a number a
+resizing frame could act on.
+
+The general shape of this is worth keeping: **a viewport-relative cap has a
+lower end, and something will find it.** `vh` units read as "a fraction of a
+screen" and are a fraction of whatever box the control was given.
+
+`demo.fidelity` drops to `limited` until the frame grows. Nothing is stubbed
+and every interaction works — what is missing is room to see it, which is what
+`demo.limitations` now says.
+
 ### Still not assertable
 
 The rig has no DOM and no reconciler, so a click, an arrow key, an effect and

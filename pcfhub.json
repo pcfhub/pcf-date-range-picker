@@ -31,7 +31,10 @@
     },
 
     "demo": {
-        "fidelity": "full",
+        "fidelity": "limited",
+        "limitations": [
+            "The calendar opens as a floating layer about 340px tall, and the demo runs in an iframe sized to the control's resting height — so the calendar is clipped by the frame rather than floating above the page as it does on a real form. Nothing is stubbed and every interaction works; what is missing is room to see it. Install the solution, or use npm start in the repository, to see the picker at full size."
+        ],
         "bundle": "out/controls/DateRangePicker/bundle.js",
         "styles": ["out/controls/DateRangePicker/css/DateRangePicker.css"],
         "presets": [
