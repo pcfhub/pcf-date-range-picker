@@ -1,6 +1,6 @@
 {
   "name": "pcf-date-range-picker",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "A start and end date pair with range validation.",
   "license": "MIT",
   "private": true,
@@ -13,7 +13,8 @@
     "start": "pcf-scripts start",
     "refreshTypes": "pcf-scripts refreshTypes",
     "lint": "eslint DateRangePicker --ext .ts,.tsx",
-    "smoke": "node dev/smoke.js"
+    "smoke": "node dev/smoke.js",
+    "harness": "node dev/serve.js"
   },
   "devDependencies": {
     "@fluentui/react-components": "9.46.2",

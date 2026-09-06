@@ -54,7 +54,40 @@
         DateRangePicker_BeforeMin: 'That is earlier than the earliest allowed date.',
         DateRangePicker_AfterMax: 'That is later than the latest allowed date.',
         DateRangePicker_Duration: '{0} days',
+        DateRangePicker_DurationSameDay: '1 day, {0}',
         DateRangePicker_NoAccess: 'You do not have access to this value.',
+        DateRangePicker_Placeholder: 'Select a date range',
+        DateRangePicker_Restricted: 'Hidden',
+        DateRangePicker_PartialAccess: 'One of these dates is hidden from you.',
+        DateRangePicker_PreviousMonth: 'Previous month',
+        DateRangePicker_NextMonth: 'Next month',
+        DateRangePicker_QuickRanges: 'Quick ranges',
+        DateRangePicker_PickStart: 'Pick a start date',
+        DateRangePicker_PickEnd: 'Pick an end date',
+        DateRangePicker_Clear: 'Clear',
+        DateRangePicker_Done: 'Done',
+    };
+
+    /*
+     * The organisation's date culture, as `userSettings.dateFormattingInfo`.
+     *
+     * Monday-first, because that is what a non-US Dataverse organisation hands
+     * over and a Sunday-first fixture would let a rotation bug through. Both
+     * arrays stay Sunday-first regardless: that is the platform's shape, and
+     * rotating them is the control's job.
+     */
+    var DATE_FORMATTING = {
+        firstDayOfWeek: 1,
+        shortestDayNames: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
+        dayNames: [
+            'Sunday',
+            'Monday',
+            'Tuesday',
+            'Wednesday',
+            'Thursday',
+            'Friday',
+            'Saturday',
+        ],
     };
 
     var SECURITY = {
@@ -75,8 +108,16 @@
         /** The boundary inputs. */
         min: null,
         max: null,
-        allowSameDay: true,
-        showDuration: true,
+        /*
+         * Enums, so their `raw` is a string. v0.1.x had a TwoOptions pair here
+         * whose `raw` was a boolean that could never mean "untouched", which
+         * is why passing a value that is neither of the two below matters: it
+         * is how the defensive read gets tested.
+         */
+        sameDay: 'allow',
+        duration: 'show',
+        /** The quick-range rail, as the maker's raw text. */
+        presets: 'today,last7,thisMonth',
         /** Security, per column — they are independent. */
         startSecurity: 'none',
         endSecurity: 'none',
@@ -89,6 +130,20 @@
         /** The form's read-only state. Not the columns' — see security. */
         disabled: false,
         rtl: false,
+        /*
+         * Null keeps the marked formatter, which is what the assertions read.
+         * A BCP-47 tag switches to real localised dates for the harness page,
+         * where the point is what a user would see rather than which code path
+         * produced it.
+         */
+        formatLocale: null,
+        /*
+         * Withheld by passing `null`, which is what a host publishing no date
+         * culture looks like — canvas, and `npm start`. The control has a
+         * fallback for exactly that, and a fixture that always supplied this
+         * would never reach it.
+         */
+        dateFormatting: DATE_FORMATTING,
     };
 
     function property(raw, security, error, message) {
@@ -99,6 +154,34 @@
             // The platform sets no message when there is no error.
             errorMessage: error ? message : undefined,
             type: 'DateAndTime.DateOnly',
+        };
+    }
+
+    /**
+     * The platform's own formatters, standing in as the browser's.
+     *
+     * A real `formatDateShort` follows the user's Dataverse settings, which the
+     * browser's locale is only an approximation of — but it is a much better
+     * approximation than a marker string when the question is "does this look
+     * right in Japanese".
+     */
+    function plainFormatting(locale) {
+        // Numeric parts rather than `dateStyle: 'short'`, which abbreviates the
+        // year in en-US and would show a date no Dataverse form ever renders.
+        var short = new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'numeric', day: 'numeric' });
+        var long = new Intl.DateTimeFormat(locale, { dateStyle: 'full' });
+        var yearMonth = new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long' });
+
+        return {
+            formatDateShort: function (value) {
+                return short.format(value);
+            },
+            formatDateLong: function (value) {
+                return long.format(value);
+            },
+            formatDateYearMonth: function (value) {
+                return yearMonth.format(value);
+            },
         };
     }
 
@@ -117,8 +200,9 @@
                 endDate: property(o.end, o.endSecurity, o.endError, o.errorMessage),
                 minDate: { raw: o.min, type: 'DateAndTime.DateOnly' },
                 maxDate: { raw: o.max, type: 'DateAndTime.DateOnly' },
-                allowSameDay: { raw: o.allowSameDay, type: 'TwoOptions' },
-                showDuration: { raw: o.showDuration, type: 'TwoOptions' },
+                sameDay: { raw: o.sameDay, type: 'Enum' },
+                duration: { raw: o.duration, type: 'Enum' },
+                presets: { raw: o.presets, type: 'SingleLine.Text' },
             },
 
             mode: {
@@ -139,7 +223,7 @@
              *
              * Built from local components for the reason in the header.
              */
-            formatting: {
+            formatting: o.formatLocale ? plainFormatting(o.formatLocale) : {
                 formatDateShort: function (value) {
                     return (
                         'fmt:'
@@ -150,9 +234,33 @@
                         + String(value.getDate()).padStart(2, '0')
                     );
                 },
+
+                formatDateLong: function (value) {
+                    return (
+                        'long:'
+                        + value.getFullYear()
+                        + '-'
+                        + String(value.getMonth() + 1).padStart(2, '0')
+                        + '-'
+                        + String(value.getDate()).padStart(2, '0')
+                    );
+                },
+
+                formatDateYearMonth: function (value) {
+                    return (
+                        'ym:'
+                        + value.getFullYear()
+                        + '-'
+                        + String(value.getMonth() + 1).padStart(2, '0')
+                    );
+                },
             },
 
-            userSettings: { isRTL: o.rtl, languageId: 1033 },
+            userSettings: {
+                isRTL: o.rtl,
+                languageId: 1033,
+                dateFormattingInfo: o.dateFormatting === null ? undefined : o.dateFormatting,
+            },
         };
     }
 
@@ -172,6 +280,7 @@
         STRINGS: STRINGS,
         SECURITY: SECURITY,
         DEFAULTS: DEFAULTS,
+        DATE_FORMATTING: DATE_FORMATTING,
         localDate: localDate,
         createContext: createContext,
         captureRegistration: captureRegistration,

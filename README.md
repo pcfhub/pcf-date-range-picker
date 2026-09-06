@@ -1,6 +1,6 @@
 # Date Range Picker
 
-A start and end date pair with range validation.
+Pick a start and end date as one range, on a two-month calendar.
 
 [![Build](https://github.com/pcfhub/pcf-date-range-picker/actions/workflows/build.yml/badge.svg)](https://github.com/pcfhub/pcf-date-range-picker/actions/workflows/build.yml)
 [![Release](https://github.com/pcfhub/pcf-date-range-picker/actions/workflows/release.yml/badge.svg)](https://github.com/pcfhub/pcf-date-range-picker/actions/workflows/release.yml)
@@ -11,9 +11,15 @@ recompiles it.
 
 ## What it does
 
-Puts a start date and an end date side by side, validates that they make a range,
-and writes both back to their own columns — replacing the usual arrangement of two
-unrelated date fields that only disagree with each other once somebody saves.
+One field on the form that opens a two-month range calendar: click a start,
+click an end, and the days between shade as the pointer moves. A quick-range rail
+covers the periods people actually pick, and both dates are written back to their
+own columns — replacing the usual arrangement of two unrelated date fields that
+only disagree with each other once somebody saves.
+
+**Clicking the two days in the wrong order swaps them.** v0.1.x answered a
+backwards pair with an error message, which is a mistake to report when the
+intent is unambiguous: nobody means "end, then a start after it".
 
 **It binds two columns, which is the exception to the usual rule rather than a
 lapse from it.** A field control binds its first bound property to the column it is
@@ -24,12 +30,25 @@ type-grouped property. A date range genuinely *is* two columns, so here the seco
 picker is how the pair gets configured. The distinguishing question is whether the
 maker should be asked, not how many properties there are.
 
-**The dates are the browser's own `<input type="date">`.** Fluent 9's date picker
-lives in `@fluentui/react-datepicker-compat`, which is not one of the platform
-libraries — importing it would bundle it and its calendar dependency and undo the
-reason to be a virtual control at all. The native input brings the calendar,
-keyboard handling and locale for free, and its value is always `yyyy-mm-dd`
-regardless of display locale, which removes a class of parsing bugs outright.
+**The calendar is hand-built, and that is a trade with a number behind it.**
+Fluent 9's date picker lives in `@fluentui/react-datepicker-compat`, which is not
+one of the platform libraries — importing it would bundle it and its calendar
+dependency and undo the reason to be a virtual control at all. So the grid is
+this repository's code, built on the Fluent design tokens the platform *does*
+publish, and it takes on the two things v0.1.x got from the browser for free:
+
+- **the keyboard**, which is a roving tabindex over the day grid — arrows by day
+  and week, `Home`/`End` for the week, `Page Up`/`Page Down` by month and with
+  `Shift` by year, and the horizontal arrows swapped under RTL;
+- **the locale**, which comes from `userSettings.dateFormattingInfo` — the first
+  day of the week, the day names and the month names — with every date on screen
+  formatted through `context.formatting` rather than `Intl`, so the control
+  agrees with the rest of the form instead of with the browser.
+
+The typed **From** and **To** fields inside the popover are still native
+`<input type="date">`. Their value is always `yyyy-mm-dd` regardless of display
+locale, which removes a class of parsing bugs outright — that was always the
+strongest argument for them, and it survives.
 
 **Calendar days are read and written from local components throughout**, never via
 `toISOString()` or `new Date(string)`. Both of those shift the day, in opposite
@@ -46,8 +65,22 @@ tests that run under several timezones.
 | `endDate` | DateAndTime.DateOnly | bound, **required** | — | The column holding the last day |
 | `minDate` | DateAndTime.DateOnly | input | — | Optional earliest selectable day |
 | `maxDate` | DateAndTime.DateOnly | input | — | Optional latest selectable day |
-| `allowSameDay` | TwoOptions | input | `true` | Whether a one-day range is valid |
-| `showDuration` | TwoOptions | input | `true` | Show how many days the range covers |
+| `sameDay` | Enum | input | `allow` | `allow` or `block` a one-day range |
+| `duration` | Enum | input | `show` | `show` or `hide` how many days the range covers |
+| `presets` | SingleLine.Text | input | six of them | Comma-separated quick ranges; empty for none |
+
+`sameDay` and `duration` replaced `allowSameDay` and `showDuration` in 0.2.0, and
+the rename is the point. Both were `TwoOptions` carrying `default-value="true"`,
+which cannot work: `TwoOptionsProperty.raw` is a plain `boolean`, so there is no
+value meaning "the maker never touched this" and an untouched property arrives as
+`false`. The shipped 0.1.x control therefore blocked same-day ranges and hid the
+duration by default, contradicting its own descriptions. An `Enum` carries a real
+default. See `docs/migration.md`.
+
+`presets` takes any of `today`, `thisWeek`, `last7`, `last30`, `thisMonth`,
+`lastMonth`, `thisYear`, `next7`, `next30`, `nextMonth`. Unknown tokens are
+dropped rather than thrown — the property is text and a canvas formula can put
+anything in it, so a typo should cost one button rather than the control.
 
 `getOutputs()` returns **both** bound values on every call, and emits `null` rather
 than `undefined` to clear one — `undefined` means "no change", which a canvas app
@@ -55,7 +88,15 @@ honours strictly, so a field bound that way simply refuses to empty.
 
 An invalid pair is rendered but never handed back to the platform, so the columns
 cannot hold a range that contradicts itself. A half-filled pair is not an error;
-requiredness is the platform's to enforce.
+requiredness is the platform's to enforce. The first click of a selection writes
+nothing at all — it only anchors the range — so abandoning a half-finished pick
+leaves the columns as they were.
+
+Field-level security is read per column and now *rendered* per column: a user
+permitted the start date and denied the end sees the start date and "Hidden",
+rather than the whole control vanishing. v0.1.x computed the two flags and then
+hid everything if either was false, which no assertion caught because the suite
+read the props and never rendered.
 
 Strings ship in English, Spanish, French, German and Japanese. Built on the
 platform's own React 16.14 and Fluent 9, so neither is bundled — confirmed by the
@@ -77,8 +118,8 @@ does nothing else — no Web API, no device, no navigation. That absence is what
 the sandbox run the real thing, and it is one fewer permission prompt for the maker
 installing it.
 
-Five presets cover a normal range, a single day, the validation state, a bounded
-window, and the empty pair.
+Six presets cover the default rail, a calendar with no rail, a single day, the
+validation state, a bounded window and the empty pair.
 
 ## Install
 
@@ -94,7 +135,47 @@ npm start          # the PCF test harness
 npm run build
 npm run lint
 npm run check      # what CI runs first: placeholders, pcfhub.json, control shape
+npm run smoke      # the built bundle, driven outside a browser
+npm run harness    # dev/harness.html, a stand-in form in the browser
 ```
+
+Three tools, and they answer different questions.
+
+`npm start` is Microsoft's own harness and the only one running the **real**
+Fluent, so it is the authority on anything that depends on the popover being
+portalled — including whether a stylesheet rule is scoped to reach it.
+
+`npm run harness` is `dev/harness.html`, and it exists because `npm start`
+cannot reach the states that break this control: field-level security per
+column, a business rule on one date, a host that publishes no theme versus a
+dark one, a host that publishes no date culture, right-to-left, and each of the
+five shipped languages. It reads the strings out of the `.resx` rather than a
+copy, so a key missing from a locale shows up on the page as the key name.
+
+The template deletes this page for `--framework react`, on the grounds that
+`@fluentui/react-components` ships no UMD build and there is nothing to put in a
+`<script src>`. That ruling holds for a control made of Fluent; it does not hold
+for this one, which is almost entirely its own DOM and imports exactly four
+Fluent components. `dev/fluent-stub.js` stands in for those four in eighty
+lines, and its header lists the three ways it is *less* capable than the real
+thing — inline instead of portalled, no focus trap, no tokens unless asked.
+
+Every switch is also a query parameter, so a state is a URL rather than a
+sequence of clicks nobody wrote down. That is how `media/screenshot.png` is
+taken, and it can be retaken from a clean tree:
+
+```bash
+npm run build && npm run harness -- --no-open --port 8199
+chrome --headless=new --window-size=700,432 --force-device-scale-factor=2 \
+  --screenshot=media/screenshot.png \
+  "http://localhost:8199/dev/harness.html?bare=1&open=1&locale=1033"
+```
+
+`npm run smoke` is the assertion half — it drives the real built bundle in Node,
+reads the props the control handed down, and renders the tree with
+`react-dom/server` for the parts that have no props to read, which since 0.2.0
+is most of the calendar. What it cannot do is click a day, send an arrow key,
+run an effect or observe focus; those are in `SPEC.md` under **Not verified**.
 
 Run `npm run refreshTypes` after every manifest edit — until you do,
 `context.parameters` is typed from the old manifest and `tsc` will accept code that
@@ -145,6 +226,7 @@ from the hourly sweep otherwise. A sync imports a draft; a person publishes it.
 | `docs/` | The pages PCFHub publishes — see the comments in each file |
 | `media/` | Images and video referenced from the docs |
 | `pcfhub.json` | The hub's manifest: identity, links, docs path, demo |
+| `dev/` | The rig: `smoke.js` asserts against the built bundle; `harness.html` shows it in a browser, with Fluent stood in for |
 | `scripts/` | Template setup and the CI guard that keeps it adopted |
 
 ## Licence

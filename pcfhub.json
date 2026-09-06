@@ -3,9 +3,9 @@
 
     "slug": "pcf-date-range-picker",
     "name": "Date Range Picker",
-    "tagline": "A start and end date pair with range validation.",
+    "tagline": "Pick a start and end date as one range, on a two-month calendar.",
     "category": "input",
-    "tags": ["date", "range", "validation", "react", "fluent"],
+    "tags": ["date", "range", "calendar", "picker", "validation", "react", "fluent"],
 
     "control": {
         "namespace": "PCFHub",
@@ -38,67 +38,86 @@
             {
                 "slug": "default",
                 "name": "Default",
-                "description": "A nine-day range with the duration shown beneath it.",
+                "description": "The whole picker: click a start, click an end, and the range is drawn between them across two months. Every date is written as noon rather than midnight, because a value that lands on the day boundary reports the wrong calendar day to half the world.",
                 "props": {
                     "startDate": "2026-08-20T12:00:00",
                     "endDate": "2026-08-28T12:00:00",
                     "minDate": null,
                     "maxDate": null,
-                    "allowSameDay": true,
-                    "showDuration": true
+                    "sameDay": "allow",
+                    "duration": "show",
+                    "presets": "today,last7,last30,thisMonth,next7,next30"
                 },
                 "isDefault": true
             },
             {
+                "slug": "no-presets",
+                "name": "Calendar only",
+                "description": "The quick-range rail switched off, which is what an empty presets list means. The calendar is unchanged; the popover is simply narrower.",
+                "props": {
+                    "startDate": "2026-08-20T12:00:00",
+                    "endDate": "2026-08-28T12:00:00",
+                    "minDate": null,
+                    "maxDate": null,
+                    "sameDay": "allow",
+                    "duration": "show",
+                    "presets": ""
+                }
+            },
+            {
                 "slug": "same-day",
                 "name": "Single day",
-                "description": "Start and end on the same day, which this configuration allows.",
+                "description": "Start and end on the same day, which this configuration allows. One day is drawn as one shape rather than as a start and an end fighting over the same corner.",
                 "props": {
                     "startDate": "2026-08-20T12:00:00",
                     "endDate": "2026-08-20T12:00:00",
                     "minDate": null,
                     "maxDate": null,
-                    "allowSameDay": true,
-                    "showDuration": true
+                    "sameDay": "allow",
+                    "duration": "show",
+                    "presets": "today,thisWeek,thisMonth"
                 }
             },
             {
                 "slug": "invalid",
                 "name": "End before start",
-                "description": "The validation state. The pair is shown but never written back, so the columns cannot hold a backwards range.",
+                "description": "The validation state, reached by typing rather than by clicking: picking the earlier day second swaps the pair instead of refusing it. The range is shown but never written back, so the columns cannot come to hold a backwards pair.",
                 "props": {
                     "startDate": "2026-08-28T12:00:00",
                     "endDate": "2026-08-20T12:00:00",
                     "minDate": null,
                     "maxDate": null,
-                    "allowSameDay": true,
-                    "showDuration": true
+                    "sameDay": "allow",
+                    "duration": "show",
+                    "presets": ""
                 }
             },
             {
                 "slug": "bounded",
                 "name": "Within bounds",
-                "description": "Outer limits set, so the browser's own calendar will not offer a day outside them.",
+                "description": "Outer limits set, so every day outside them is disabled in the calendar rather than clicked and then refused. Same-day ranges are blocked here as well.",
                 "props": {
                     "startDate": "2026-09-07T12:00:00",
                     "endDate": "2026-09-11T12:00:00",
                     "minDate": "2026-09-01T12:00:00",
                     "maxDate": "2026-09-30T12:00:00",
-                    "allowSameDay": false,
-                    "showDuration": true
+                    "sameDay": "block",
+                    "duration": "show",
+                    "presets": "thisMonth,next7,next30"
                 }
             },
             {
                 "slug": "empty",
                 "name": "Nothing chosen",
-                "description": "Both columns empty. A half-filled pair is not an error, so no message shows until both dates exist.",
+                "description": "Both columns empty, so the field shows its placeholder. A half-filled pair is not an error, and no message shows until both dates exist.",
                 "props": {
                     "startDate": null,
                     "endDate": null,
                     "minDate": null,
                     "maxDate": null,
-                    "allowSameDay": true,
-                    "showDuration": true
+                    "sameDay": "allow",
+                    "duration": "show",
+                    "presets": "today,last7,last30,thisMonth,next7,next30"
                 }
             }
         ]

@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { IInputs, IOutputs } from './generated/ManifestTypes';
 import { DateRangePickerControl, IProps } from './components/DateRangePickerControl';
+import { parsePresets, toCalendarLocale } from './calendar';
 import { validateRange } from './range';
 
 /**
@@ -73,8 +74,23 @@ export class DateRangePicker implements ComponentFramework.ReactControl<IInputs,
             !context.mode.isControlDisabled
             && (property.security === undefined || property.security.editable);
 
+        /*
+         * The Enum reads, defensively.
+         *
+         * The generated type is a string union, which is a compile-time claim
+         * about a runtime the compiler does not control — a canvas formula can
+         * put anything in an Enum property. Comparing against the value that
+         * is *not* the default means an unexpected string lands on the default
+         * rather than on the rarer branch.
+         *
+         * These replace the v0.1.x TwoOptions pair. `TwoOptionsProperty.raw` is
+         * a plain boolean, so there was no value meaning "the maker never
+         * touched this" and `default-value="true"` did not create one: the
+         * shipped control blocked same-day ranges and hid the duration by
+         * default, which is the opposite of what its own descriptions promised.
+         */
         const rules = {
-            allowSameDay: context.parameters.allowSameDay.raw,
+            allowSameDay: String(context.parameters.sameDay.raw ?? 'allow') !== 'block',
             min: context.parameters.minDate.raw ?? null,
             max: context.parameters.maxDate.raw ?? null,
         };
@@ -95,9 +111,36 @@ export class DateRangePicker implements ComponentFramework.ReactControl<IInputs,
             endError: end.error ? end.errorMessage : null,
             label: context.mode.label,
             isRTL: context.userSettings.isRTL,
-            showDuration: context.parameters.showDuration.raw,
+            showDuration: String(context.parameters.duration.raw ?? 'show') !== 'hide',
+            presets: parsePresets(context.parameters.presets.raw),
+            /*
+             * Month names, day names and the first day of the week come from the
+             * host rather than from `Intl`, for the same reason the formatters
+             * below do: the organisation's culture is the platform's answer to
+             * give, and a control that asks the browser instead disagrees with
+             * every other date on the form. Absent on a host that publishes
+             * none, which is what the fallback inside is for.
+             */
+            locale: toCalendarLocale(context.userSettings.dateFormattingInfo),
+            /*
+             * "Today" is resolved once per render and handed down, so the
+             * calendar's highlight and every preset agree with each other — and
+             * so the smoke suite can say when now is.
+             */
+            today: new Date(),
+            // Typed as of @types/powerapps-component-framework 1.3.18, so no
+            // cast is needed — but absent in PCFHub's demo harness, which is
+            // why the component falls back to Fluent's own light theme.
+            theme: context.fluentDesignLanguage?.tokenTheme,
+            // Only `true` counts. A host that published no theme has not said
+            // "light", and answering for it is the same mistake as reading the
+            // operating system's setting.
+            isDark: context.fluentDesignLanguage?.isDarkTheme === true,
             resources: context.resources,
             formatDate: (date: Date): string => context.formatting.formatDateShort(date),
+            // A day cell shows "14" and must announce "Saturday, 14 March 2026".
+            formatDayLabel: (date: Date): string => context.formatting.formatDateLong(date),
+            formatMonth: (date: Date): string => context.formatting.formatDateYearMonth(date),
             onChange: (nextStart: Date | null, nextEnd: Date | null): void => {
                 // A range that breaks a rule is shown but never handed over, so
                 // the columns cannot hold a backwards pair. The component keeps

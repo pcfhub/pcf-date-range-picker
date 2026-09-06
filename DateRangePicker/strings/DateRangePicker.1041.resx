@@ -72,7 +72,7 @@
     <value>期間ピッカー</value>
   </data>
   <data name="DateRangePicker_Desc" xml:space="preserve">
-    <value>開始日と終了日の組み合わせを範囲検証付きで入力します。</value>
+    <value>開始日と終了日を 1 つの期間として選択します。</value>
   </data>
   <data name="startDate_Name" xml:space="preserve">
     <value>開始日</value>
@@ -98,23 +98,50 @@
   <data name="maxDate_Desc" xml:space="preserve">
     <value>任意。これより後の日は選択できません。</value>
   </data>
-  <data name="allowSameDay_Name" xml:space="preserve">
-    <value>同一日を許可</value>
+  <data name="sameDay_Name" xml:space="preserve">
+    <value>同一日</value>
   </data>
-  <data name="allowSameDay_Desc" xml:space="preserve">
-    <value>開始日と終了日が同じ日になることを許可します。</value>
+  <data name="sameDay_Desc" xml:space="preserve">
+    <value>開始日と終了日を同じ日にできるかどうか。</value>
   </data>
-  <data name="showDuration_Name" xml:space="preserve">
-    <value>期間を表示</value>
+  <data name="sameDay_Allow" xml:space="preserve">
+    <value>許可する</value>
   </data>
-  <data name="showDuration_Desc" xml:space="preserve">
-    <value>範囲が何日間かを表示します。</value>
+  <data name="sameDay_Block" xml:space="preserve">
+    <value>許可しない</value>
+  </data>
+  <data name="duration_Name" xml:space="preserve">
+    <value>期間の表示</value>
+  </data>
+  <data name="duration_Desc" xml:space="preserve">
+    <value>範囲が何日間かを表示するかどうか。</value>
+  </data>
+  <data name="duration_Show" xml:space="preserve">
+    <value>表示する</value>
+  </data>
+  <data name="duration_Hide" xml:space="preserve">
+    <value>表示しない</value>
+  </data>
+  <data name="presets_Name" xml:space="preserve">
+    <value>クイック範囲</value>
+  </data>
+  <data name="presets_Desc" xml:space="preserve">
+    <value>表示するショートカットをコンマ区切りで指定します: today、thisWeek、last7、last30、thisMonth、lastMonth、thisYear、next7、next30、nextMonth。空にすると表示しません。</value>
   </data>
   <data name="DateRangePicker_StartLabel" xml:space="preserve">
     <value>開始</value>
   </data>
   <data name="DateRangePicker_EndLabel" xml:space="preserve">
     <value>終了</value>
+  </data>
+  <data name="DateRangePicker_Placeholder" xml:space="preserve">
+    <value>期間を選択してください</value>
+  </data>
+  <data name="DateRangePicker_Restricted" xml:space="preserve">
+    <value>非表示</value>
+  </data>
+  <data name="DateRangePicker_PartialAccess" xml:space="preserve">
+    <value>これらの日付のうち 1 つは表示できません。</value>
   </data>
   <data name="DateRangePicker_EndBeforeStart" xml:space="preserve">
     <value>終了日を開始日より前にすることはできません。</value>
@@ -131,7 +158,61 @@
   <data name="DateRangePicker_Duration" xml:space="preserve">
     <value>{0} 日間 ({1} 〜 {2})</value>
   </data>
+  <data name="DateRangePicker_DurationSameDay" xml:space="preserve">
+    <value>1 日間 ({0})</value>
+  </data>
   <data name="DateRangePicker_NoAccess" xml:space="preserve">
     <value>これらの値にアクセスする権限がありません。</value>
+  </data>
+  <data name="DateRangePicker_PreviousMonth" xml:space="preserve">
+    <value>前の月</value>
+  </data>
+  <data name="DateRangePicker_NextMonth" xml:space="preserve">
+    <value>次の月</value>
+  </data>
+  <data name="DateRangePicker_QuickRanges" xml:space="preserve">
+    <value>クイック範囲</value>
+  </data>
+  <data name="DateRangePicker_PickStart" xml:space="preserve">
+    <value>開始日を選択してください</value>
+  </data>
+  <data name="DateRangePicker_PickEnd" xml:space="preserve">
+    <value>終了日を選択してください</value>
+  </data>
+  <data name="DateRangePicker_Clear" xml:space="preserve">
+    <value>クリア</value>
+  </data>
+  <data name="DateRangePicker_Done" xml:space="preserve">
+    <value>完了</value>
+  </data>
+  <data name="DateRangePicker_Preset_today" xml:space="preserve">
+    <value>今日</value>
+  </data>
+  <data name="DateRangePicker_Preset_thisWeek" xml:space="preserve">
+    <value>今週</value>
+  </data>
+  <data name="DateRangePicker_Preset_last7" xml:space="preserve">
+    <value>過去 7 日間</value>
+  </data>
+  <data name="DateRangePicker_Preset_last30" xml:space="preserve">
+    <value>過去 30 日間</value>
+  </data>
+  <data name="DateRangePicker_Preset_thisMonth" xml:space="preserve">
+    <value>今月</value>
+  </data>
+  <data name="DateRangePicker_Preset_lastMonth" xml:space="preserve">
+    <value>先月</value>
+  </data>
+  <data name="DateRangePicker_Preset_thisYear" xml:space="preserve">
+    <value>今年</value>
+  </data>
+  <data name="DateRangePicker_Preset_next7" xml:space="preserve">
+    <value>今後 7 日間</value>
+  </data>
+  <data name="DateRangePicker_Preset_next30" xml:space="preserve">
+    <value>今後 30 日間</value>
+  </data>
+  <data name="DateRangePicker_Preset_nextMonth" xml:space="preserve">
+    <value>翌月</value>
   </data>
 </root>

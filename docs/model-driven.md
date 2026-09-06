@@ -31,15 +31,22 @@ range genuinely is two columns, and this is how you say which one holds the end.
 
 ## Form state it honours
 
-- **Read-only fields** and read-only forms render both dates without interaction.
+- **Read-only fields** and read-only forms render the range without opening a
+  calendar. The picker edits one range, so it needs both columns writable: a
+  read-only end date leaves the whole field read-only rather than opening a
+  calendar that could only commit one end.
 - **Field-level security is read per column.** A user permitted the start date and
-  denied the end date sees exactly that, rather than the whole control disappearing
-  or, worse, an empty end date that looks like missing data.
+  denied the end date sees exactly that — the start date, and "Hidden" in place of
+  the end — rather than the whole control disappearing or, worse, an empty end
+  date that looks like missing data. Denied both, they are told so.
 - **Business rule and validation errors** are surfaced per column, underneath the
   field they belong to, and kept separate from the control's own range message —
   they are different failures and one should not hide the other.
-- **The field label** from the form is used as the accessible name of the start
-  date input.
+- **The field label** from the form is used as the accessible name of the range
+  field and of the calendar that opens from it.
+- **The user's date settings** decide the first day of the week and the month and
+  day names, and every date shown is formatted by the platform rather than by the
+  browser — so the calendar agrees with the rest of the form.
 
 :::callout{type=info}
 The control is localised into English, Spanish, French, German and Japanese. The

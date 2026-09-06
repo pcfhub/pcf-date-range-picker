@@ -70,8 +70,9 @@ them takes a plain value and can be set in the **Advanced** pane:
 | End date | `endDate` | `varEnd` — a variable, never a literal |
 | Earliest date | `minDate` | `Today()` (optional) |
 | Latest date | `maxDate` | `DateAdd(Today(), 90, TimeUnit.Days)` (optional) |
-| Allow same day | `allowSameDay` | `true` |
-| Show duration | `showDuration` | `true` |
+| Same day | `sameDay` | `"allow"` or `"block"` (optional, defaults to allow) |
+| Duration | `duration` | `"show"` or `"hide"` (optional, defaults to show) |
+| Quick ranges | `presets` | `"today,last7,last30,thisMonth,next7,next30"` (optional) |
 
 ### 4. Write the changes back
 
@@ -89,7 +90,9 @@ in the variables, and the variables feed straight back into `startDate` and
 a value.
 
 `OnChange` fires only when the pair is valid, so a range with the end before the
-start never reaches your formula. The control shows the user why.
+start never reaches your formula. The control shows the user why — though from
+the calendar that is hard to reach at all, since clicking the earlier day second
+swaps the pair rather than refusing it.
 
 ## Saving to a record
 

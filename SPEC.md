@@ -7,19 +7,13 @@ and **dates** — and therefore timezones, which the skill had no section on at 
 Adopted from `_template` with `--framework react`. Verified with Microsoft's own
 tooling and with timezone-shifted tests.
 
-| Step | Result |
-| --- | --- |
-| `npm run check` | passes, including the control-shape check |
-| `npm run lint` | clean |
-| `npm run build` | `out/controls/DateRangePicker/bundle.js`, **24.3 KiB** |
-| `msbuild` Release pack (clean tree) | production: **6,317 bytes**, both zips |
-| `range.ts` tests | 25 assertions, green under UTC-6 and UTC+12 |
-
-**6,317 bytes is smaller than `pcf-star-rating`'s 9,090**, despite this control
-having more UI and using React. That is the whole `react_virtual` argument in one
-number: React and Fluent resolve to `Reactv16` and `FluentUIReactv940` as externals
-and never enter the bundle. Confirmed by grep on the production bundle, not by
-reading `package.json`.
+Bundle sizes are quoted in each release's notes rather than here: a number in
+git that nobody re-runs reads as authoritative while being wrong. What does not
+go stale is the reason they stay small — React and Fluent resolve to `Reactv16`
+and `FluentUIReactv940` as externals and never enter the bundle, which the
+README's grep confirms on the production output rather than from
+`package.json`. That held through 0.2.0, which added a hand-built calendar and
+a popover without adding a dependency.
 
 ## Two bound properties — the rule needed narrowing, not breaking
 
@@ -169,15 +163,153 @@ control is locked. `docs/canvas.md` now walks the four steps — create the
 variables, bind both properties, set the rest, close the loop in `OnChange` —
 rather than presenting a property table and assuming.
 
+## 0.2.0 — what the calendar cost, and what it bought
+
+v0.1.x was two native `<input type="date">` side by side. The trade was written
+down at the time and it was a good one: the browser supplied the calendar, the
+keyboard handling and the locale for nothing, and its `yyyy-mm-dd` value removed
+a whole class of parsing bugs. What it did not supply was any sense that the two
+dates were *one* thing — no band between them, no preview, no shortcut, and a
+backwards pair answered with an error rather than prevented.
+
+Replacing it meant taking back the two things the browser was giving away, and
+they are worth naming so the next person weighs the same trade knowingly:
+
+- **The keyboard is now this repository's problem.** A roving tabindex over the
+  day grid, arrows by day and week, `Home`/`End`, `Page Up`/`Page Down` by
+  month and with `Shift` by year. The horizontal arrows swap under RTL, which is
+  invisible to an LTR reviewer and wrong for every right-to-left user.
+- **The locale is now read explicitly**, from
+  `userSettings.dateFormattingInfo` — `firstDayOfWeek`, `shortestDayNames`,
+  `dayNames`. Reading it field by field rather than all-or-nothing matters: the
+  three are independent, and a short array would otherwise index into
+  `undefined` and render "undefined" as a column header. `toCalendarLocale`
+  validates each and falls back per field.
+
+What the platform gave back, and it is more than expected: **month headings and
+day labels still come from `context.formatting`** — `formatDateYearMonth` and
+`formatDateLong` — so no part of the calendar reaches for `Intl`. The control
+therefore agrees with every other date on the form rather than with the browser.
+
+### The defaults bug that shipped in 0.1.1
+
+`allowSameDay` and `showDuration` were `TwoOptions` carrying
+`default-value="true"`. That cannot work: `TwoOptionsProperty.raw` is a plain
+`boolean`, so nothing means "the maker never touched this" and an untouched
+property arrives as `false`. The shipped control blocked same-day ranges and hid
+the duration by default — the opposite of what its own `.resx` descriptions
+said, and of what `docs/examples.md` told makers to expect.
+
+It is in `references/control-patterns.md` under *A `TwoOptions` input cannot
+default to on*, and this control shipped it anyway. Nothing catches it: the
+manifest is valid, the build is green, and the fixture in `dev/host.js` passed
+`true` explicitly, which is exactly the value a real maker never supplies.
+**A fixture that always supplies a value cannot test a default.** The 0.2.0 host
+passes a deliberately invalid string instead, which reaches the same branch a
+real untouched property does.
+
+Fixed as `Enum`s — `sameDay: allow|block`, `duration: show|hide` — because an
+Enum carries a real default and reads as the choice it is. The rename is
+breaking; `docs/migration.md` says so plainly.
+
+### The security branch nothing rendered
+
+`index.ts` computed `startReadable` and `endReadable` separately, with a comment
+explaining why they cannot collapse into one flag — and the component then hid
+the entire control if *either* was false, contradicting the promise in
+`docs/model-driven.md`.
+
+Two assertions covered this and both passed, because they read the props and the
+props were right. **An assertion on a decision is not an assertion on the
+rendering of it.** `renderDeep` exists for that: `react-dom/server` needs no DOM
+and no browser, executes the component body, and turns markup into something a
+suite can read. It is also the only way the month grid is testable at all — a
+grid is the control's own work rather than a value it hands on, so there are no
+props to inspect.
+
+### The harness ruling, and why this control is the exception
+
+`_template` deletes `dev/harness.html` for `--framework react`, and
+`TEMPLATE.md` calls it settled: a virtual bundle expects Fluent under a global,
+`@fluentui/react-components` ships no UMD build, and adding a bundler to make
+one would turn the harness into the thing that needs building. The stated
+escape hatches are "Fluent ships a UMD build" or "a control whose bug can only
+be seen and not asserted".
+
+The second one happened, twice, in one afternoon of looking at this control in a
+browser — and neither was reachable from `npm run smoke`:
+
+- **The field was two tab stops.** `PopoverTrigger` clones its child and puts
+  `role`, `tabindex` and `aria-expanded` on it, so a real `<button>` inside a
+  styled `<div>` trigger produced a focusable div *and* a focusable button. The
+  surface and the button are now one element.
+- **The roving tabindex put `0` on two buttons.** Fourteen dates are drawn in
+  both months at once — the trailing days of one are the leading days of the
+  next — and keying on the date alone matched both copies. The ref map had the
+  same collision, so focusing a date reached whichever month rendered last.
+
+Both are now asserted, because both turned out to be visible in
+`renderToStaticMarkup`. That is the honest sequence and worth keeping: the
+browser found them, the suite keeps them found.
+
+What justified the page rather than the ruling is the ratio. This control is
+almost entirely its own DOM and imports four Fluent components — a provider and
+a popover in three parts. `dev/fluent-stub.js` stands in for those in eighty
+lines and says in its header how it is *less* capable: inline rather than
+portalled, no focus trap, no tokens unless asked. **The portal difference is the
+dangerous one**, because a stylesheet rule scoped under `.DateRangePicker`
+rather than `.DateRangePicker-popover` would work on that page and match
+nothing on a form. `npm start` remains the authority for that, and the page
+says so.
+
+Two things it caught that were not bugs in the control:
+
+- **Every day disabled in `npm start`.** `pcf-start` prefills `minDate` and
+  `maxDate` with the same date, so exactly one day was selectable and the
+  control was right. A guard against an `Invalid Date` was written and then
+  reverted: `pcf-start` converts an unparseable date to `undefined`
+  (`harness.js`: `r = new Date(e), isNaN(r) && (r = void 0)`), so `?? null`
+  already handles it and the guard would have shipped a comment asserting
+  something untrue.
+- **The native date inputs stayed light on a dark form.** Not a stylesheet bug —
+  the browser draws their glyph, spinners and popup, and no rule reaches any of
+  it. `color-scheme`, set from `fluentDesignLanguage.isDarkTheme` rather than
+  from `prefers-color-scheme`, is the one property that fixes it.
+
+### Still not assertable
+
+The rig has no DOM and no reconciler, so a click, an arrow key, an effect and
+focus are all out of reach. The click-order swap is the notable one: the *shape*
+it depends on is asserted (a backwards pair still paints between its ends,
+because `positionInRange` normalises), but the swap itself needs a click.
+
 ## Still open
 
-- `media/logo.png` is the template placeholder and `media.screenshots` is empty.
-  The docs reference no images, so nothing is broken — but the component page will
-  carry the placeholder.
-- Not imported into a real environment. The per-column security and business-rule
-  error paths are read-correct against the real typings and compile, but are not
-  observed.
-- The `Behavior` conclusion is drawn from the platform's own typings and from
+Everything here is **Not verified** in the strict sense: read-correct against
+the real typings, compiled, and asserted as far as a rig without a browser can
+reach.
+
+- **Not imported into a real environment.** The per-column security and
+  business-rule error paths compile and are asserted against fixtures, but are
+  not observed on a form.
+- **The keyboard has not been driven by a keyboard.** Roving tabindex, the arrow
+  and paging keys, the RTL swap, focus entering and leaving a trapped popover —
+  none of it is reachable from `npm run smoke`, which has no DOM. `dev/harness.html`
+  can reach it, and the attempt failed for an environment reason rather than a
+  control one: `document.hasFocus()` was false in the automated browser, so
+  `.focus()` moved nothing. What *was* confirmed there is that the grid carries
+  exactly one tab stop and that paging with the month arrows carries it along.
+- **The focus trap and Escape are unobserved.** Both are Fluent's, and
+  `dev/fluent-stub.js` has neither, so only `npm start` or a real form shows
+  them.
+- **The click-order swap is asserted only in the shape it rests on.** See above.
+- **`dateFormattingInfo` has not been read from a real organisation.** The
+  fixture supplies the shape the typings describe; whether a live tenant fills
+  every field is unobserved, which is why each is validated separately.
+- **Whether PCFHub's demo harness publishes `fluentDesignLanguage` or
+  `dateFormattingInfo` is unknown.** Both have fallbacks — `webLightTheme` and a
+  Sunday-first English culture — so the demo renders either way, but the hub's
+  screenshot may not match a themed form.
+- **The `Behavior` conclusion** is drawn from the platform's own typings and from
   timezone tests of the boundary functions, not from a live environment with a
   column of each behaviour.
-- No GitHub repo yet; local `git init` only, nothing pushed, no tag.

@@ -63,8 +63,11 @@ export function fromInputValue(value: string): Date | null {
  * components. Subtracting two of these is DST-proof, where subtracting the
  * timestamps directly is off by an hour across a transition — enough to make
  * a `Math.round` of "days between" wrong at the boundary.
+ *
+ * Exported so `calendar.ts` builds its grids and its presets on this one
+ * definition rather than on a second copy that drifts from it.
  */
-function dayNumber(date: Date): number {
+export function dayNumber(date: Date): number {
     return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000;
 }
 

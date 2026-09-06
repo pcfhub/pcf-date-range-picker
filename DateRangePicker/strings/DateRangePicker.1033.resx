@@ -72,7 +72,7 @@
     <value>Date Range Picker</value>
   </data>
   <data name="DateRangePicker_Desc" xml:space="preserve">
-    <value>A start and end date pair with range validation.</value>
+    <value>A start and end date pair, picked as one range.</value>
   </data>
   <data name="startDate_Name" xml:space="preserve">
     <value>Start date</value>
@@ -98,23 +98,50 @@
   <data name="maxDate_Desc" xml:space="preserve">
     <value>Optional. No day after this can be chosen.</value>
   </data>
-  <data name="allowSameDay_Name" xml:space="preserve">
-    <value>Allow same day</value>
+  <data name="sameDay_Name" xml:space="preserve">
+    <value>Same day</value>
   </data>
-  <data name="allowSameDay_Desc" xml:space="preserve">
-    <value>Allow the range to start and end on the same day.</value>
+  <data name="sameDay_Desc" xml:space="preserve">
+    <value>Whether the range may start and end on the same day.</value>
   </data>
-  <data name="showDuration_Name" xml:space="preserve">
-    <value>Show duration</value>
+  <data name="sameDay_Allow" xml:space="preserve">
+    <value>Allow</value>
   </data>
-  <data name="showDuration_Desc" xml:space="preserve">
-    <value>Show how many days the range covers.</value>
+  <data name="sameDay_Block" xml:space="preserve">
+    <value>Block</value>
+  </data>
+  <data name="duration_Name" xml:space="preserve">
+    <value>Duration</value>
+  </data>
+  <data name="duration_Desc" xml:space="preserve">
+    <value>Whether to show how many days the range covers.</value>
+  </data>
+  <data name="duration_Show" xml:space="preserve">
+    <value>Show</value>
+  </data>
+  <data name="duration_Hide" xml:space="preserve">
+    <value>Hide</value>
+  </data>
+  <data name="presets_Name" xml:space="preserve">
+    <value>Quick ranges</value>
+  </data>
+  <data name="presets_Desc" xml:space="preserve">
+    <value>Comma-separated shortcuts to offer: today, thisWeek, last7, last30, thisMonth, lastMonth, thisYear, next7, next30, nextMonth. Leave empty for none.</value>
   </data>
   <data name="DateRangePicker_StartLabel" xml:space="preserve">
     <value>From</value>
   </data>
   <data name="DateRangePicker_EndLabel" xml:space="preserve">
     <value>To</value>
+  </data>
+  <data name="DateRangePicker_Placeholder" xml:space="preserve">
+    <value>Select a date range</value>
+  </data>
+  <data name="DateRangePicker_Restricted" xml:space="preserve">
+    <value>Hidden</value>
+  </data>
+  <data name="DateRangePicker_PartialAccess" xml:space="preserve">
+    <value>One of these dates is hidden from you.</value>
   </data>
   <data name="DateRangePicker_EndBeforeStart" xml:space="preserve">
     <value>The end date cannot be before the start date.</value>
@@ -131,7 +158,61 @@
   <data name="DateRangePicker_Duration" xml:space="preserve">
     <value>{0} days, {1} to {2}</value>
   </data>
+  <data name="DateRangePicker_DurationSameDay" xml:space="preserve">
+    <value>1 day, {0}</value>
+  </data>
   <data name="DateRangePicker_NoAccess" xml:space="preserve">
     <value>You do not have access to these values.</value>
+  </data>
+  <data name="DateRangePicker_PreviousMonth" xml:space="preserve">
+    <value>Previous month</value>
+  </data>
+  <data name="DateRangePicker_NextMonth" xml:space="preserve">
+    <value>Next month</value>
+  </data>
+  <data name="DateRangePicker_QuickRanges" xml:space="preserve">
+    <value>Quick ranges</value>
+  </data>
+  <data name="DateRangePicker_PickStart" xml:space="preserve">
+    <value>Pick a start date</value>
+  </data>
+  <data name="DateRangePicker_PickEnd" xml:space="preserve">
+    <value>Pick an end date</value>
+  </data>
+  <data name="DateRangePicker_Clear" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="DateRangePicker_Done" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="DateRangePicker_Preset_today" xml:space="preserve">
+    <value>Today</value>
+  </data>
+  <data name="DateRangePicker_Preset_thisWeek" xml:space="preserve">
+    <value>This week</value>
+  </data>
+  <data name="DateRangePicker_Preset_last7" xml:space="preserve">
+    <value>Last 7 days</value>
+  </data>
+  <data name="DateRangePicker_Preset_last30" xml:space="preserve">
+    <value>Last 30 days</value>
+  </data>
+  <data name="DateRangePicker_Preset_thisMonth" xml:space="preserve">
+    <value>This month</value>
+  </data>
+  <data name="DateRangePicker_Preset_lastMonth" xml:space="preserve">
+    <value>Last month</value>
+  </data>
+  <data name="DateRangePicker_Preset_thisYear" xml:space="preserve">
+    <value>This year</value>
+  </data>
+  <data name="DateRangePicker_Preset_next7" xml:space="preserve">
+    <value>Next 7 days</value>
+  </data>
+  <data name="DateRangePicker_Preset_next30" xml:space="preserve">
+    <value>Next 30 days</value>
+  </data>
+  <data name="DateRangePicker_Preset_nextMonth" xml:space="preserve">
+    <value>Next month</value>
   </data>
 </root>

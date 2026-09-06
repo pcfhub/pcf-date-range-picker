@@ -6,27 +6,39 @@ order: 1
 
 # Date Range Picker
 
-Date Range Picker puts a start date and an end date side by side, validates that
-they make a range, and writes both back to their own columns. It replaces the
-usual arrangement of two unrelated date fields that only disagree with each other
-once somebody saves.
+Date Range Picker is one field on the form. Open it and a two-month calendar
+appears: click the first day, click the last, and the range is drawn between
+them. Quick ranges sit beside it for the periods people actually pick, and both
+dates are written back to their own Dataverse columns.
 
-::image{src=media/screenshot.png alt="From and To date inputs side by side, with the duration 21 days, 8/26/2026 to 9/15/2026 written beneath them" zoom}
+It replaces the usual arrangement of two unrelated date fields that only
+disagree with each other once somebody saves.
+
+::image{src=media/screenshot.png alt="A single date range field reading 20 Aug 2026 to 28 Aug 2026, with its calendar open beneath: a column of quick ranges on the left, two months of days on the right, and the chosen range shaded from one end to the other" zoom}
 
 ## Why this one
 
-- **It knows the two dates are related.** An end before the start is caught in the
-  control and never written, so the columns cannot hold a backwards range.
+- **The range is one gesture, not two dates.** Click a start, click an end. The
+  days between them shade as you move the pointer, so the range you are about to
+  choose is visible before you commit to it — and clicking the two days in the
+  wrong order swaps them rather than showing you an error.
+- **Quick ranges for the periods people pick.** Today, the last 7 or 30 days,
+  this or last month, this year, the next 7 or 30 days, next month. The maker
+  chooses which appear, and a range already matching one of them shows that
+  shortcut as selected.
 - **It gets the day right.** Dates and timezones are the most common source of
   off-by-one bugs in Power Apps controls. This one reads and writes calendar days
-  from local components throughout, so a user in Auckland and a user in Mexico City
-  see the day they picked.
+  from local components throughout, so a user in Auckland and a user in Mexico
+  City see the day they picked.
+- **It looks like the form it is on.** Fluent's design tokens rather than
+  hard-coded colours, so it follows the app's theme, its brand colour and dark
+  mode. The field is the platform's own 32px filled field, down to the focus
+  underline.
 - **It respects each column separately.** Field-level security, validation errors
-  and read-only state are read per column, because a user can be permitted one and
-  denied the other.
-- **It stays small.** React and Fluent come from the platform, not from the bundle,
-  and the date fields are the browser's own — so the calendar, keyboard handling
-  and locale come free rather than as another 100KB.
+  and read-only state are read per column, because a user can be permitted one
+  and denied the other.
+- **It stays small.** React and Fluent come from the platform rather than from the
+  bundle, and the calendar is the control's own rather than another package.
 
 ## What it works with
 

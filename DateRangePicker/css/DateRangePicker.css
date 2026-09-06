@@ -1,72 +1,636 @@
 /*
- * Every rule is scoped under the control's own class.
+ * Every rule is scoped under the control's own class, the custom property
+ * declarations included.
  *
  * A code component shares a document with the host app and with every other
  * control on the form, so a bare `input { … }` here restyles the page it was
  * dropped onto. The platform does not sandbox this for you.
+ *
+ * The one exception is the popover block near the bottom, and it is not an
+ * exception to the scoping — Fluent renders that surface through a portal,
+ * attached near the end of the document rather than under this control's root,
+ * so `.DateRangePicker .whatever` matches nothing inside it. Those rules lead
+ * with the surface's own class instead, which the component puts on the slot.
  */
 
+/*
+ * The palette.
+ *
+ * Each value is `var(--fluentToken, literal)`. This control mounts its own
+ * `FluentProvider` with the host's `tokenTheme`, so the token side is what
+ * resolves in practice — including in dark mode and in a brand-themed
+ * environment, which is why there is no `--dark` class here. The literals are
+ * Fluent's web light theme, copied out of `@fluentui/tokens` rather than
+ * eyeballed, and they are what a provider-less render would fall back to.
+ */
 .DateRangePicker {
+    --DateRangePicker-background: var(--colorNeutralBackground3, #f5f5f5);
+    --DateRangePicker-background-hover: var(--colorNeutralBackground3Hover, #ebebeb);
+    --DateRangePicker-surface: var(--colorNeutralBackground1, #ffffff);
+    --DateRangePicker-stroke: var(--colorTransparentStroke, transparent);
+    --DateRangePicker-stroke-rest: var(--colorNeutralStroke1, #d1d1d1);
+    --DateRangePicker-stroke-disabled: var(--colorNeutralStrokeDisabled, #e0e0e0);
+    --DateRangePicker-stroke-focus: var(--colorCompoundBrandStroke, #0f6cbd);
+    --DateRangePicker-stroke-focus-pressed: var(--colorCompoundBrandStrokePressed, #0f548c);
+    --DateRangePicker-foreground: var(--colorNeutralForeground1, #242424);
+    --DateRangePicker-foreground-secondary: var(--colorNeutralForeground2, #424242);
+    --DateRangePicker-foreground-placeholder: var(--colorNeutralForeground4, #707070);
+    --DateRangePicker-foreground-disabled: var(--colorNeutralForegroundDisabled, #bdbdbd);
+    --DateRangePicker-foreground-danger: var(--colorPaletteRedForeground1, #bc2f32);
+    --DateRangePicker-brand: var(--colorBrandBackground, #0f6cbd);
+    --DateRangePicker-brand-hover: var(--colorBrandBackgroundHover, #115ea3);
+    --DateRangePicker-on-brand: var(--colorNeutralForegroundOnBrand, #ffffff);
+    --DateRangePicker-band: var(--colorBrandBackground2, #ebf3fc);
+    --DateRangePicker-band-stroke: var(--colorBrandStroke2, #b4d6fa);
+    --DateRangePicker-subtle-hover: var(--colorSubtleBackgroundHover, #f5f5f5);
+    --DateRangePicker-subtle-pressed: var(--colorSubtleBackgroundPressed, #e0e0e0);
+    --DateRangePicker-focus-inner: var(--colorStrokeFocus1, #ffffff);
+    --DateRangePicker-focus-outer: var(--colorStrokeFocus2, #000000);
+    --DateRangePicker-radius: var(--borderRadiusMedium, 4px);
+    --DateRangePicker-font-family: var(
+        --fontFamilyBase,
+        "Segoe UI",
+        "Segoe UI Web (West European)",
+        -apple-system,
+        BlinkMacSystemFont,
+        Roboto,
+        "Helvetica Neue",
+        sans-serif
+    );
+    --DateRangePicker-font-size: var(--fontSizeBase300, 14px);
+    --DateRangePicker-line-height: var(--lineHeightBase300, 20px);
+    --DateRangePicker-font-size-caption: var(--fontSizeBase200, 12px);
+    --DateRangePicker-line-height-caption: var(--lineHeightBase200, 16px);
+    --DateRangePicker-duration-fast: var(--durationUltraFast, 50ms);
+    --DateRangePicker-duration-faster: var(--durationFaster, 100ms);
+    --DateRangePicker-duration-normal: var(--durationNormal, 200ms);
+    --DateRangePicker-curve-accelerate: var(--curveAccelerateMid, cubic-bezier(1, 0, 1, 1));
+    --DateRangePicker-curve-decelerate: var(--curveDecelerateMid, cubic-bezier(0, 0, 0, 1));
+    --DateRangePicker-curve-ease: var(--curveEasyEase, cubic-bezier(0.33, 0, 0.67, 1));
+
     display: block;
     width: 100%;
     box-sizing: border-box;
+    font-family: var(--DateRangePicker-font-family);
+    font-size: var(--DateRangePicker-font-size);
+    color: var(--DateRangePicker-foreground);
+    /* FluentProvider paints its theme's canvas colour by default, which on a
+       form section reads as a box drawn around the control. */
+    background-color: transparent;
 }
 
 /*
- * Wraps rather than clipping. A form column is narrower than two date fields
- * side by side expect, and a non-wrapping row would push the second field out
- * of its cell — the failure pcf-star-rating shipped with at max 20.
+ * The field surface, which is one control rather than two.
+ *
+ * The value and the calendar glyph share a single filled box with a single
+ * border and a single focus underline, because that is what the platform's own
+ * fields with a trailing affordance look like — the lookup, the phone field.
+ * This is Fluent's `filled-darker` Input, rule for rule: the fill is
+ * `colorNeutralBackground3`, the borders are `colorTransparentStroke`, and the
+ * box is 32px tall.
  */
-.DateRangePicker-fields {
+.DateRangePicker .DateRangePicker-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacingHorizontalS, 8px);
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 32px;
+    padding: 0 var(--spacingHorizontalM, 12px);
+    border: 1px solid var(--DateRangePicker-stroke);
+    border-radius: var(--DateRangePicker-radius);
+    background-color: var(--DateRangePicker-background);
+    font: inherit;
+    line-height: var(--DateRangePicker-line-height);
+    color: inherit;
+    text-align: start;
+    cursor: pointer;
+    transition: background-color var(--DateRangePicker-duration-faster)
+        var(--DateRangePicker-curve-ease);
+}
+
+.DateRangePicker .DateRangePicker-field:disabled {
+    cursor: default;
+    color: var(--DateRangePicker-foreground-disabled);
+}
+
+.DateRangePicker .DateRangePicker-field[hidden] {
+    /* `element.hidden` works by a UA rule that any author `display` beats, and
+       the flex declaration above is exactly such a declaration. */
+    display: none;
+}
+
+.DateRangePicker .DateRangePicker-field:hover:not(:disabled) {
+    background-color: var(--DateRangePicker-background-hover);
+}
+
+/* Disabled is a different surface, not a dimmer one: Fluent removes the fill
+   and reveals the border rather than dropping opacity, which would drag the
+   text below contrast along with the chrome. */
+.DateRangePicker .DateRangePicker-field.is-readonly,
+.DateRangePicker .DateRangePicker-field.is-readonly:hover {
+    background-color: var(--colorTransparentBackground, transparent);
+    border-color: var(--DateRangePicker-stroke-disabled);
+}
+
+/*
+ * The animated focus underline.
+ *
+ * A pseudo-element rather than a `border-bottom`, and scaled rather than grown:
+ * a border that appears on focus is 2px of height the box did not have a moment
+ * ago, so every field below it on the form nudges down as the user tabs
+ * through. `transform` is composited, so this moves nothing.
+ *
+ * `clip-path` is what keeps a 4px-tall box reading as a 2px line — the height
+ * has to clear the corner radius or the line stops short of the rounded ends.
+ * The asymmetric timing is Fluent's: quick out, slower in, so arriving in a
+ * field is what the eye catches and leaving one is not.
+ */
+.DateRangePicker .DateRangePicker-field::after {
+    content: "";
+    position: absolute;
+    right: -1px;
+    bottom: -1px;
+    left: -1px;
+    box-sizing: border-box;
+    height: max(2px, var(--DateRangePicker-radius));
+    border-bottom: 2px solid var(--DateRangePicker-stroke-focus);
+    border-bottom-right-radius: var(--DateRangePicker-radius);
+    border-bottom-left-radius: var(--DateRangePicker-radius);
+    clip-path: inset(calc(100% - 2px) 0 0 0);
+    transform: scaleX(0);
+    transition-property: transform;
+    transition-duration: var(--DateRangePicker-duration-fast);
+    transition-delay: var(--DateRangePicker-curve-accelerate);
+}
+
+.DateRangePicker .DateRangePicker-field:focus-within::after {
+    transform: scaleX(1);
+    transition-duration: var(--DateRangePicker-duration-normal);
+    transition-delay: var(--DateRangePicker-curve-decelerate);
+}
+
+.DateRangePicker .DateRangePicker-field:focus-within:active::after {
+    border-bottom-color: var(--DateRangePicker-stroke-focus-pressed);
+}
+
+/* The underline is the focus indicator for this box. Suppressing the UA outline
+   here — and only here — stops the host drawing a second one around it. */
+.DateRangePicker .DateRangePicker-field:focus-within {
+    outline: 2px solid transparent;
+}
+
+.DateRangePicker .DateRangePicker-value {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.DateRangePicker .DateRangePicker-value.is-placeholder {
+    color: var(--DateRangePicker-foreground-placeholder);
+}
+
+.DateRangePicker .DateRangePicker-icon {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    /* `currentColor`, so the glyph follows the trigger's disabled colour with no
+       second rule chasing it. */
+    fill: currentColor;
+    color: var(--DateRangePicker-foreground-secondary);
+}
+
+.DateRangePicker .DateRangePicker-field:disabled .DateRangePicker-icon {
+    color: var(--DateRangePicker-foreground-disabled);
+}
+
+.DateRangePicker .DateRangePicker-message,
+.DateRangePicker .DateRangePicker-duration {
+    margin: var(--spacingVerticalXS, 4px) 0 0;
+    font-size: var(--DateRangePicker-font-size-caption);
+    line-height: var(--DateRangePicker-line-height-caption);
+    color: var(--DateRangePicker-foreground-secondary);
+}
+
+/* An error is red and says so in words; v0.1.x rendered it in link blue. */
+.DateRangePicker .DateRangePicker-message.is-error {
+    color: var(--DateRangePicker-foreground-danger);
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * The popover.
+ *
+ * Portalled, so every selector below leads with the surface's own class rather
+ * than with `.DateRangePicker`. Still namespaced, so still incapable of
+ * touching the host page; just anchored to an element that exists.
+ * ---------------------------------------------------------------------------
+ */
+.DateRangePicker-popover {
+    padding: 0;
+    /*
+     * Two stacked months, a rail and a footer are taller than a phone, and a
+     * PopoverSurface does not scroll on its own — so the Done and Clear buttons
+     * were simply unreachable below the fold. Scrolling the surface is the
+     * smallest fix that keeps every control reachable at every size.
+     */
+    max-height: min(80vh, 40rem);
+    overflow-y: auto;
+    font-family: var(--fontFamilyBase, "Segoe UI", sans-serif);
+    font-size: var(--fontSizeBase300, 14px);
+    color: var(--colorNeutralForeground1, #242424);
+}
+
+.DateRangePicker-popover .DateRangePicker-popover-body {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
     align-items: flex-start;
+    gap: var(--spacingHorizontalM, 12px);
+    padding: var(--spacingVerticalM, 12px);
 }
 
-.DateRangePicker-fields > * {
-    /* min-width: 0 because a flex item defaults to min-width: auto and will
-       not shrink below its content, which is what makes a row overflow. */
-    flex: 1 1 10rem;
-    min-width: 0;
+.DateRangePicker-popover .DateRangePicker-presets {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacingVerticalXXS, 2px);
+    min-width: 8.5rem;
 }
 
-.DateRangePicker-input {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 5px 8px;
-    /* Inherit rather than declare: the host controls the form's type scale, and
-       a hard-coded family is what makes a control look pasted in. */
+.DateRangePicker-popover .DateRangePicker-presets-heading {
+    padding: 0 var(--spacingHorizontalS, 8px) var(--spacingVerticalXS, 4px);
+    font-size: var(--fontSizeBase200, 12px);
+    font-weight: var(--fontWeightSemibold, 600);
+    color: var(--colorNeutralForeground2, #424242);
+}
+
+.DateRangePicker-popover .DateRangePicker-preset {
+    padding: 6px var(--spacingHorizontalS, 8px);
+    border: 1px solid transparent;
+    border-radius: var(--borderRadiusMedium, 4px);
+    background-color: transparent;
     font: inherit;
     color: inherit;
-    background: transparent;
-    border: 1px solid rgba(0, 0, 0, 0.25);
-    border-radius: 4px;
+    text-align: start;
+    cursor: pointer;
 }
 
-.DateRangePicker-input:focus-visible {
-    outline: 2px solid Highlight;
-    outline-offset: 1px;
+.DateRangePicker-popover .DateRangePicker-preset:hover:not(:disabled) {
+    background-color: var(--colorSubtleBackgroundHover, #f5f5f5);
 }
 
-.DateRangePicker-input:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+.DateRangePicker-popover .DateRangePicker-preset:active:not(:disabled) {
+    background-color: var(--colorSubtleBackgroundPressed, #e0e0e0);
+}
+
+/* Selected carries a border and a weight as well as a fill, so it survives
+   forced colours, where every tint collapses to one system keyword. */
+.DateRangePicker-popover .DateRangePicker-preset.is-selected {
+    border-color: var(--colorBrandStroke1, #0f6cbd);
+    background-color: var(--colorBrandBackground2, #ebf3fc);
+    font-weight: var(--fontWeightSemibold, 600);
+}
+
+.DateRangePicker-popover .DateRangePicker-preset:disabled {
+    cursor: default;
+    color: var(--colorNeutralForegroundDisabled, #bdbdbd);
+}
+
+.DateRangePicker-popover .DateRangePicker-calendar {
+    position: relative;
 }
 
 /*
- * The control's own range message, and the no-access state. System colour
- * keywords rather than hex values, so both survive a themed environment and
- * Windows high contrast.
+ * The month arrows are positioned over the headings rather than laid out beside
+ * them, so the two month captions stay centred over their own grids however
+ * long the localised month name turns out to be.
  */
-.DateRangePicker-message {
-    margin: 6px 0 0;
-    font-size: 12px;
-    color: LinkText;
+.DateRangePicker-popover .DateRangePicker-nav {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline: 0;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
 }
 
-.DateRangePicker-duration {
-    margin: 6px 0 0;
-    font-size: 12px;
-    opacity: 0.8;
+.DateRangePicker-popover .DateRangePicker-nav-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: var(--borderRadiusMedium, 4px);
+    background-color: transparent;
+    color: var(--colorNeutralForeground2, #424242);
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.DateRangePicker-popover .DateRangePicker-nav-button:hover {
+    background-color: var(--colorSubtleBackgroundHover, #f5f5f5);
+}
+
+.DateRangePicker-popover .DateRangePicker-nav-button svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+}
+
+.DateRangePicker-popover .DateRangePicker-months {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacingHorizontalL, 16px);
+}
+
+.DateRangePicker-popover .DateRangePicker-month-heading {
+    height: 28px;
+    line-height: 28px;
+    font-weight: var(--fontWeightSemibold, 600);
+    text-align: center;
+}
+
+.DateRangePicker-popover .DateRangePicker-week {
+    display: grid;
+    grid-template-columns: repeat(7, 32px);
+}
+
+.DateRangePicker-popover .DateRangePicker-weekday {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    font-size: var(--fontSizeBase200, 12px);
+    color: var(--colorNeutralForeground2, #424242);
+}
+
+.DateRangePicker-popover .DateRangePicker-cell {
+    /* The cell is the band; the button inside it is the day. Painting the band
+       on the button would leave a gap between adjacent days. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+}
+
+.DateRangePicker-popover .DateRangePicker-day {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    border: 1px solid transparent;
+    border-radius: var(--borderRadiusCircular, 999px);
+    background-color: transparent;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+
+.DateRangePicker-popover .DateRangePicker-day.is-outside {
+    color: var(--colorNeutralForeground4, #707070);
+}
+
+.DateRangePicker-popover .DateRangePicker-day:hover:not(:disabled) {
+    background-color: var(--colorSubtleBackgroundHover, #f5f5f5);
+}
+
+.DateRangePicker-popover .DateRangePicker-day:disabled {
+    cursor: default;
+    color: var(--colorNeutralForegroundDisabled, #bdbdbd);
+}
+
+/* Today is marked by an outline rather than a fill, so it stays legible when a
+   range is drawn over it. */
+.DateRangePicker-popover .DateRangePicker-day.is-today {
+    border-color: var(--colorNeutralStroke1, #d1d1d1);
+    font-weight: var(--fontWeightSemibold, 600);
+}
+
+/*
+ * The band. `is-between` is square so consecutive days join up; the ends are
+ * rounded on their outer side only, using logical radii so the shape flips with
+ * the writing direction instead of pointing the wrong way in Arabic or Hebrew.
+ */
+.DateRangePicker-popover .DateRangePicker-day.is-between {
+    border-radius: 0;
+    background-color: var(--colorBrandBackground2, #ebf3fc);
+}
+
+.DateRangePicker-popover .DateRangePicker-day.is-start,
+.DateRangePicker-popover .DateRangePicker-day.is-end,
+.DateRangePicker-popover .DateRangePicker-day.is-single {
+    background-color: var(--colorBrandBackground, #0f6cbd);
+    color: var(--colorNeutralForegroundOnBrand, #ffffff);
+    font-weight: var(--fontWeightSemibold, 600);
+}
+
+.DateRangePicker-popover .DateRangePicker-day.is-start {
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+}
+
+.DateRangePicker-popover .DateRangePicker-day.is-end {
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+}
+
+.DateRangePicker-popover .DateRangePicker-day.is-start:hover:not(:disabled),
+.DateRangePicker-popover .DateRangePicker-day.is-end:hover:not(:disabled),
+.DateRangePicker-popover .DateRangePicker-day.is-single:hover:not(:disabled) {
+    background-color: var(--colorBrandBackgroundHover, #115ea3);
+}
+
+/*
+ * Fluent's focus indicator: a dark ring with a light one immediately inside it,
+ * so the shape survives against the neutral background, the pale band and the
+ * brand fill alike. `:focus-visible`, so a mouse click leaves nothing behind.
+ */
+.DateRangePicker-popover .DateRangePicker-day:focus-visible,
+.DateRangePicker-popover .DateRangePicker-preset:focus-visible,
+.DateRangePicker-popover .DateRangePicker-nav-button:focus-visible,
+.DateRangePicker-popover .DateRangePicker-action:focus-visible {
+    outline: 2px solid var(--colorStrokeFocus2, #000000);
+    outline-offset: -2px;
+    box-shadow: inset 0 0 0 4px var(--colorStrokeFocus1, #ffffff);
+}
+
+.DateRangePicker-popover .DateRangePicker-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--spacingHorizontalM, 12px);
+    padding: var(--spacingVerticalS, 8px) var(--spacingVerticalM, 12px);
+    border-top: 1px solid var(--colorNeutralStroke2, #e0e0e0);
+}
+
+.DateRangePicker-popover .DateRangePicker-typed {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacingHorizontalS, 8px);
+}
+
+.DateRangePicker-popover .DateRangePicker-typed-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    /* min-width: 0 because a flex item defaults to min-width: auto and will not
+       shrink below its content, which is what makes a row overflow. */
+    min-width: 0;
+    font-size: var(--fontSizeBase200, 12px);
+    color: var(--colorNeutralForeground2, #424242);
+}
+
+.DateRangePicker-popover .DateRangePicker-input {
+    box-sizing: border-box;
+    min-height: 28px;
+    padding: 0 var(--spacingHorizontalS, 8px);
+    border: 1px solid var(--colorNeutralStroke1, #d1d1d1);
+    border-radius: var(--borderRadiusMedium, 4px);
+    background-color: var(--colorNeutralBackground1, #ffffff);
+    font-family: inherit;
+    font-size: var(--fontSizeBase300, 14px);
+    color: var(--colorNeutralForeground1, #242424);
+}
+
+.DateRangePicker-popover .DateRangePicker-input:focus-visible {
+    outline: 2px solid var(--colorCompoundBrandStroke, #0f6cbd);
+    outline-offset: -1px;
+}
+
+.DateRangePicker-popover .DateRangePicker-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacingHorizontalS, 8px);
+}
+
+.DateRangePicker-popover .DateRangePicker-hint {
+    font-size: var(--fontSizeBase200, 12px);
+    color: var(--colorNeutralForeground2, #424242);
+}
+
+.DateRangePicker-popover .DateRangePicker-action {
+    min-height: 32px;
+    padding: 0 var(--spacingHorizontalM, 12px);
+    border: 1px solid var(--colorNeutralStroke1, #d1d1d1);
+    border-radius: var(--borderRadiusMedium, 4px);
+    background-color: var(--colorNeutralBackground1, #ffffff);
+    font: inherit;
+    font-weight: var(--fontWeightSemibold, 600);
+    color: inherit;
+    cursor: pointer;
+}
+
+.DateRangePicker-popover .DateRangePicker-action:hover:not(:disabled) {
+    background-color: var(--colorNeutralBackground1Hover, #f5f5f5);
+}
+
+.DateRangePicker-popover .DateRangePicker-action.is-primary {
+    border-color: transparent;
+    background-color: var(--colorBrandBackground, #0f6cbd);
+    color: var(--colorNeutralForegroundOnBrand, #ffffff);
+}
+
+.DateRangePicker-popover .DateRangePicker-action.is-primary:hover:not(:disabled) {
+    background-color: var(--colorBrandBackgroundHover, #115ea3);
+}
+
+/* Recoloured rather than dimmed: Clear is disabled for as long as the range is
+   empty, which is a permanent state, and `opacity` would park the label below
+   contrast and leave it there. */
+.DateRangePicker-popover .DateRangePicker-action:disabled {
+    cursor: default;
+    border-color: var(--colorNeutralStrokeDisabled, #e0e0e0);
+    background-color: transparent;
+    color: var(--colorNeutralForegroundDisabled, #bdbdbd);
+}
+
+/*
+ * On a phone the rail is the wrong shape: a column of seven full-width buttons
+ * pushes the calendar — the thing the user opened this for — off the screen.
+ * The same buttons wrap as chips instead, which is a row of two or three and
+ * costs one line rather than seven.
+ */
+@media screen and (max-width: 30rem) {
+    .DateRangePicker-popover .DateRangePicker-presets {
+        flex-direction: row;
+        flex-wrap: wrap;
+        min-width: 0;
+    }
+
+    .DateRangePicker-popover .DateRangePicker-presets-heading {
+        width: 100%;
+        padding-inline: 0;
+    }
+
+    .DateRangePicker-popover .DateRangePicker-preset {
+        border-color: var(--colorNeutralStroke1, #d1d1d1);
+        border-radius: var(--borderRadiusCircular, 999px);
+        padding-inline: var(--spacingHorizontalM, 12px);
+    }
+}
+
+/*
+ * Forced colours collapse every tint to a handful of system keywords, so
+ * anything carrying meaning by colour has to carry it by shape too. The range
+ * band is the casualty here: `is-between` is *only* a background, so it becomes
+ * a row of nothing on the one screen whose whole job is to show which days are
+ * in the range. It gets a border instead, and the ends get the system highlight.
+ */
+@media (forced-colors: active) {
+    .DateRangePicker .DateRangePicker-field {
+        border-color: ButtonBorder;
+    }
+
+    .DateRangePicker .DateRangePicker-field::after {
+        border-bottom-color: Highlight;
+    }
+
+    .DateRangePicker .DateRangePicker-field.is-readonly {
+        border-color: GrayText;
+    }
+
+    .DateRangePicker .DateRangePicker-field:disabled,
+    .DateRangePicker-popover .DateRangePicker-day:disabled,
+    .DateRangePicker-popover .DateRangePicker-action:disabled,
+    .DateRangePicker-popover .DateRangePicker-preset:disabled {
+        color: GrayText;
+    }
+
+    .DateRangePicker-popover .DateRangePicker-day.is-between {
+        border-block-color: Highlight;
+        background-color: Canvas;
+    }
+
+    .DateRangePicker-popover .DateRangePicker-day.is-start,
+    .DateRangePicker-popover .DateRangePicker-day.is-end,
+    .DateRangePicker-popover .DateRangePicker-day.is-single {
+        border-color: Highlight;
+        background-color: Highlight;
+        color: HighlightText;
+        forced-color-adjust: none;
+    }
+
+    .DateRangePicker-popover .DateRangePicker-preset.is-selected {
+        border-color: Highlight;
+    }
+}
+
+/*
+ * The animation is decoration; the focus it indicates is not. Reduced motion
+ * shortens it to nothing rather than removing the rule, so the line still
+ * appears — it just stops travelling to get there.
+ */
+@media screen and (prefers-reduced-motion: reduce) {
+    .DateRangePicker .DateRangePicker-field,
+    .DateRangePicker .DateRangePicker-field::after,
+    .DateRangePicker .DateRangePicker-field:focus-within::after {
+        transition-duration: 0.01ms;
+        transition-delay: 0.01ms;
+    }
 }

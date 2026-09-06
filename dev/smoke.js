@@ -4,9 +4,16 @@
  *     npm run build && npm run smoke
  *
  * A **virtual** control returns the element it wants rendered rather than
- * writing into a container, so these assertions read the props it passed down.
- * That is the better test of the two: the props are the control's decisions,
- * where the DOM is one rendering of them.
+ * writing into a container, so most of these assertions read the props it
+ * passed down. That is the better test of the two: the props are the control's
+ * decisions, where the DOM is one rendering of them.
+ *
+ * The calendar is the exception, and it is why `renderDeep` exists. A month
+ * grid is the control's own work rather than a value it hands on, so there are
+ * no props to read — and `updateView` only *builds* an element, so a
+ * props-only suite cannot even see a crash inside the component. Those
+ * assertions render to a static string with `react-dom/server` and read the
+ * markup.
  *
  * Why it exists alongside `npm start`: this control has two bound columns, and
  * the states worth checking are the ones only two produce — one column secured
@@ -136,6 +143,44 @@ function mount(options) {
     live.push(handle);
 
     return handle;
+}
+
+/**
+ * Render what the control returned, executing the component bodies.
+ *
+ * **`updateView` only *builds* an element.** Nothing inside
+ * `DateRangePickerControl` runs until something renders it, so a props-only
+ * assertion cannot see a crash in the month grid — and since v0.2.0 the month
+ * grid is where most of the new code lives. `react-dom/server` needs no DOM and
+ * no browser.
+ *
+ * Two things to know about what comes back. Fluent is stubbed, so its
+ * components render as their own names and the markup around them is
+ * meaningless — only this control's own elements are worth asserting on. And
+ * the stubbed `PopoverSurface` renders its children unconditionally where the
+ * real one renders nothing until the popover opens, which is what puts the
+ * calendar in this string at all. That is a property of the stub, not a claim
+ * that a closed popover renders a calendar.
+ */
+function renderDeep(element) {
+    const server = require(path.join(root, 'node_modules', 'react-dom', 'server'));
+
+    // React's development warnings about unknown element types would bury the
+    // report; the assertions are about markup, not about tag names.
+    const warn = console.error;
+
+    console.error = () => {};
+
+    try {
+        return server.renderToStaticMarkup(element);
+    } finally {
+        console.error = warn;
+    }
+}
+
+/** How many times a pattern appears in a markup string. */
+function count(markup, pattern) {
+    return (markup.match(pattern) || []).length;
 }
 
 check('bundle registered a control', typeof registration.ctor === 'function');
@@ -300,13 +345,13 @@ check(
     String(backwards.notifications()),
 );
 
-const sameDay = mount({ allowSameDay: false });
+const sameDay = mount({ sameDay: 'block' });
 
 sameDay.props().onChange(day(2026, 3, 4), day(2026, 3, 4));
 
 check('nor is a same-day range when the maker disallowed it', sameDay.notifications() === 0);
 
-const sameDayOk = mount({ allowSameDay: true });
+const sameDayOk = mount({ sameDay: 'allow' });
 
 sameDayOk.props().onChange(day(2026, 3, 4), day(2026, 3, 4));
 
@@ -365,7 +410,272 @@ check('hidden is passed down rather than ignored', mount({ visible: false }).pro
 
 check('right-to-left comes from the user, not from a guess', mount({ rtl: true }).props().isRTL === true);
 
-check('the duration can be switched off', mount({ showDuration: false }).props().showDuration === false);
+check('the duration can be switched off', mount({ duration: 'hide' }).props().showDuration === false);
+
+/* ------------------------------------------------------ the calendar grid */
+
+/*
+ * From here the assertions read *markup* rather than props, because the grid is
+ * the control's own work and props say nothing about it. What they can reach is
+ * the shape and the per-day decisions; what they cannot reach is a click, an
+ * arrow key, an effect or focus — `renderToStaticMarkup` has no DOM and no
+ * reconciler. Those belong in SPEC.md under "Not verified", and saying so is
+ * part of reporting a green run.
+ */
+const markup = renderDeep(plain.element);
+
+check(
+    'two months are rendered, not one',
+    count(markup, /role="grid"/g) === 2,
+    `${count(markup, /role="grid"/g)} grids`,
+);
+
+/*
+ * **Six rows per month, always.** A grid that grows a row for a long month
+ * starting late in the week makes the popover jump by a row's height as the
+ * user pages, and the button under the pointer moves out from under it. Seven
+ * column headers plus six weeks of cells, twice.
+ */
+check(
+    'each month is six rows deep regardless of how the month falls',
+    count(markup, /role="row"/g) === 14 && count(markup, /role="gridcell"/g) === 84,
+    `${count(markup, /role="row"/g)} rows, ${count(markup, /role="gridcell"/g)} cells`,
+);
+
+/*
+ * February 2026 has 28 days and starts on a Sunday, so under a Sunday-first
+ * culture it fills exactly four weeks — the month most likely to render short
+ * where every other month renders six rows.
+ */
+check(
+    'including February, which fits in four weeks and must still be six',
+    count(
+        renderDeep(
+            mount({ start: day(2026, 2, 1), end: day(2026, 2, 28), dateFormatting: null }).element,
+        ),
+        /role="row"/g,
+    ) === 14,
+);
+
+check(
+    'the range is painted across the days between its ends',
+    markup.includes('data-day="2026-03-02" data-position="start"')
+        && markup.includes('data-day="2026-03-04" data-position="between"')
+        && markup.includes('data-day="2026-03-06" data-position="end"'),
+);
+
+check(
+    'and a day outside it is painted as nothing',
+    markup.includes('data-day="2026-03-07" data-position="none"'),
+);
+
+/*
+ * A one-day range is `single`, not `start` and `end` fighting over the same
+ * corner radii.
+ */
+check(
+    'a single-day range is one shape rather than two',
+    renderDeep(mount({ start: day(2026, 3, 4), end: day(2026, 3, 4) }).element).includes(
+        'data-day="2026-03-04" data-position="single"',
+    ),
+);
+
+/*
+ * A pair the platform hands down backwards still paints, because the grid
+ * normalises the ends. That normalisation is what the click-order swap rests
+ * on; the swap itself needs a click and is not reachable from here.
+ */
+const reversed = renderDeep(mount({ start: day(2026, 3, 10), end: day(2026, 3, 1) }).element);
+
+check(
+    'a backwards pair is still painted between its ends rather than dropped',
+    reversed.includes('data-day="2026-03-05" data-position="between"'),
+);
+
+/*
+ * Bounds reach the day buttons, so a day outside them cannot be clicked at all
+ * rather than being clicked and then silently refused.
+ */
+const bounded = renderDeep(
+    mount({ min: day(2026, 3, 5), max: day(2026, 3, 20), start: null, end: null }).element,
+);
+
+check(
+    'days outside the bounds are disabled rather than merely refused',
+    /data-day="2026-03-04"[^>]*disabled/.test(bounded)
+        && /data-day="2026-03-21"[^>]*disabled/.test(bounded)
+        && !/data-day="2026-03-10"[^>]*disabled/.test(bounded),
+);
+
+/*
+ * Day names come from the platform's `formatDateLong`, for the same reason the
+ * trigger's dates come from `formatDateShort`: a cell showing "14" has to
+ * announce the whole date, and the organisation's culture is the platform's
+ * answer to give rather than the browser's.
+ */
+check(
+    'a day cell announces the whole date, formatted by the platform',
+    markup.includes('aria-label="long:2026-03-02"'),
+);
+
+check('and the month heading comes from the platform too', markup.includes('ym:2026-03'));
+
+/*
+ * **The grid is one tab stop, and a date is drawn twice.**
+ *
+ * The trailing days of the left month are the leading days of the right one,
+ * so fourteen dates have two buttons in this popover. A roving tabindex keyed
+ * on the date alone put `0` on both — two tab stops for a grid meant to be
+ * one, and a ref map in which focusing a date reached whichever month rendered
+ * last. Found by reading the DOM in `npm start`; catchable here, which is why
+ * it is now.
+ */
+check(
+    'exactly one day carries the tab stop, across both months',
+    count(markup, /tabindex="0"/g) === 1,
+    `${count(markup, /tabindex="0"/g)} tabbable days`,
+);
+
+check(
+    'even though the two grids draw some of the same dates twice over',
+    (() => {
+        const days = markup.match(/data-day="(\d{4}-\d{2}-\d{2})"/g) || [];
+        const twice = days.filter((day, at) => days.indexOf(day) !== at);
+
+        // The exact count depends on where the two months fall, so this
+        // asserts the overlap exists rather than a number that would be right
+        // for March and wrong for April.
+        return twice.length > 0 && days.length === 84;
+    })(),
+);
+
+/* -------------------------------------------------- the first day of week */
+
+/*
+ * The platform hands over Sunday-first arrays plus the culture's own first day,
+ * and rotating them is the control's job. A German or French organisation
+ * starts on Monday; a fixture that only ever supplied Sunday would let that bug
+ * through.
+ */
+check(
+    'the week starts where the organisation says it does',
+    markup.indexOf('aria-label="Monday"') < markup.indexOf('aria-label="Sunday"'),
+);
+
+/*
+ * And a host that publishes no date culture at all — canvas, `npm start` — must
+ * still render a calendar rather than seven headers reading "undefined".
+ */
+const noCulture = renderDeep(mount({ dateFormatting: null }).element);
+
+check(
+    'a host that publishes no date culture still gets a calendar',
+    noCulture.indexOf('aria-label="Sunday"') < noCulture.indexOf('aria-label="Monday"')
+        && !noCulture.includes('undefined'),
+);
+
+/* ------------------------------------------------------- the quick ranges */
+
+check(
+    'the quick ranges the maker asked for are the ones offered',
+    count(markup, /data-preset="/g) === 3
+        && markup.includes('data-preset="today"')
+        && markup.includes('data-preset="last7"')
+        && markup.includes('data-preset="thisMonth"'),
+    `${count(markup, /data-preset="/g)} presets`,
+);
+
+/*
+ * The property is text and a canvas formula can put anything in it, so a typo
+ * costs one button rather than the control.
+ */
+check(
+    'an unknown token is dropped rather than thrown',
+    count(renderDeep(mount({ presets: 'today,nonsense,last30' }).element), /data-preset="/g) === 2,
+);
+
+check(
+    'and an empty list means no rail at all',
+    count(renderDeep(mount({ presets: '' }).element), /data-preset="/g) === 0,
+);
+
+/*
+ * A preset is pressed when the pair *is* that range, so the rail doubles as a
+ * read-out. The clock is fixed at 1 January 2026, so "this month" is January.
+ */
+check(
+    'a preset reads as pressed when the columns already hold its range',
+    renderDeep(
+        mount({ presets: 'thisMonth', start: day(2026, 1, 1), end: day(2026, 1, 31) }).element,
+    ).includes('aria-pressed="true"'),
+);
+
+check(
+    'and not when they hold something else',
+    !renderDeep(mount({ presets: 'thisMonth' }).element).includes('aria-pressed="true"'),
+);
+
+/* --------------------------------------------- the Enum reads, defensively */
+
+/*
+ * The generated type is a string union, which is a compile-time claim about a
+ * runtime the compiler does not control. An unexpected value must land on the
+ * documented default rather than on the rarer branch — which is the v0.1.x bug
+ * seen from the other side: a `TwoOptions` pair carrying `default-value="true"`
+ * silently defaulted to `false`, and shipped a control that blocked same-day
+ * ranges and hid the duration.
+ */
+const oddEnum = mount({ sameDay: 'nonsense', duration: 'nonsense' });
+
+oddEnum.props().onChange(day(2026, 3, 4), day(2026, 3, 4));
+
+check(
+    'an unexpected sameDay value allows the same day, as the default does',
+    oddEnum.notifications() === 1,
+    String(oddEnum.notifications()),
+);
+
+check('and an unexpected duration value shows it', oddEnum.props().showDuration === true);
+
+/* ------------------------------------------- security, rendered per column */
+
+/*
+ * v0.1.x computed `startReadable` and `endReadable` separately and then hid the
+ * entire control if *either* was false — contradicting docs/model-driven.md,
+ * and invisible to a suite that read the props and never rendered. This is that
+ * suite, rendering.
+ */
+const oneHidden = renderDeep(mount({ startSecurity: 'no-access', start: null }).element);
+
+check(
+    'a user denied one column sees the other rather than nothing',
+    oneHidden.includes('resx:DateRangePicker_Restricted')
+        && oneHidden.includes('fmt:2026-03-06')
+        && !oneHidden.includes('resx:DateRangePicker_NoAccess'),
+);
+
+check(
+    'and is told why, rather than reading it as a missing value',
+    oneHidden.includes('resx:DateRangePicker_PartialAccess'),
+);
+
+check(
+    'a user denied both columns is told so, and shown no picker',
+    renderDeep(mount({ startSecurity: 'no-access', endSecurity: 'no-access' }).element).includes(
+        'resx:DateRangePicker_NoAccess',
+    ),
+);
+
+/*
+ * A read-only column locks the picker rather than opening a calendar that can
+ * only commit one end: the control edits one range, and half a range is not one.
+ */
+check(
+    'a read-only column leaves the picker read-only rather than half-editable',
+    /class="DateRangePicker-field is-readonly"/.test(
+        renderDeep(mount({ endSecurity: 'read-only' }).element),
+    ),
+);
 
 /* --------------------------------------------------- what destroy owes */
 

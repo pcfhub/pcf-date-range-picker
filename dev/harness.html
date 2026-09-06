@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>Date Range Picker — dev harness</title>
+
+        <!--
+            A local stand-in for a model-driven form.
+
+            Use `npm start` for the happy path and for anything that depends on
+            the *real* Fluent — the popover is portalled there and inline here,
+            which is the one difference that can make a stylesheet rule work on
+            this page and match nothing on a form.
+
+            This page is for everything else:
+
+                - field-level security, per column, including denied on one side
+                - the platform's own validation error, per column
+                - a host that publishes no theme, versus a dark one
+                - a host that publishes no date culture at all
+                - right-to-left
+                - **the shipped strings, in each of the five languages** — read
+                  out of the .resx rather than copied, so a missing key shows up
+                  here as the key name rather than as a blank
+
+            It also shows what `getOutputs()` returns after every interaction,
+            and counts `notifyOutputChanged` calls: a control that notifies on
+            every render rather than on every change shows up as a counter that
+            climbs on its own.
+
+                npm run build
+                npm run harness
+
+            Over http, not file:// — `dev/serve.js` is `node:http` and nothing
+            else. The page fetches the bundle and the .resx, and both are
+            blocked at a `null` origin.
+
+            **This is a stand-in, not a form.** No Dataverse, no save, no
+            business rules, no other control on the page — and Fluent itself is
+            stood in for; see the header of dev/fluent-stub.js for the three
+            ways that differs from the real thing. See SPEC.md for what a real
+            form still has to confirm.
+        -->
+
+        <link rel="stylesheet" href="../DateRangePicker/css/DateRangePicker.css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 24px;
+                font-family: 'Segoe UI', system-ui, sans-serif;
+                font-size: 14px;
+                background: #faf9f8;
+                color: #323130;
+            }
+
+            h1 {
+                font-size: 18px;
+                margin: 0 0 4px;
+            }
+
+            .harness-note {
+                margin: 0 0 20px;
+                max-width: 70ch;
+                color: #605e5c;
+            }
+
+            .harness-controls {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 12px 16px;
+                margin-bottom: 24px;
+                padding: 16px;
+                border: 1px solid #edebe9;
+                border-radius: 4px;
+                background: #ffffff;
+            }
+
+            .harness-controls label {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                font-size: 12px;
+                color: #605e5c;
+            }
+
+            .harness-controls label.harness-check {
+                flex-direction: row;
+                align-items: center;
+                gap: 6px;
+                align-self: end;
+                min-height: 28px;
+                color: #323130;
+            }
+
+            .harness-controls input[type='text'],
+            .harness-controls select {
+                font: inherit;
+                padding: 4px 6px;
+                border: 1px solid #c8c6c4;
+                border-radius: 2px;
+                background: #ffffff;
+                color: #323130;
+            }
+
+            .harness-span {
+                grid-column: 1 / -1;
+            }
+
+            .harness-buttons {
+                display: flex;
+                gap: 8px;
+                align-items: end;
+            }
+
+            .harness-buttons button {
+                font: inherit;
+                padding: 5px 12px;
+                border: 1px solid #c8c6c4;
+                border-radius: 2px;
+                background: #ffffff;
+                cursor: pointer;
+            }
+
+            /*
+                The form column a model-driven control actually gets, rather
+                than the width of the window. A control that only looks right at
+                1200px is a control nobody has seen.
+            */
+            .harness-stage {
+                max-width: 420px;
+                padding: 16px;
+                border: 1px dashed #c8c6c4;
+                border-radius: 4px;
+                background: #ffffff;
+            }
+
+            .harness-readout {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 24px;
+                margin-top: 20px;
+                font-size: 12px;
+                color: #605e5c;
+            }
+
+            .harness-readout pre {
+                margin: 4px 0 0;
+                font-size: 12px;
+            }
+
+            /*
+                Everything but the control, hidden — for a screenshot. The stage
+                loses its dashed outline too, so what is photographed is the
+                component rather than the rig around it.
+            */
+            body.is-bare > *:not(.harness-stage) {
+                display: none;
+            }
+
+            body.is-bare {
+                padding: 0;
+                background: #ffffff;
+            }
+
+            body.is-bare .harness-stage {
+                max-width: none;
+                width: max-content;
+                min-width: 420px;
+                border: none;
+                padding: 24px;
+            }
+        </style>
+    </head>
+
+    <body>
+        <h1>Date Range Picker — dev harness</h1>
+        <p class="harness-note">
+            A stand-in for a form, not a form. Every value below is supplied by
+            <code>dev/host.js</code>; the strings are read out of the shipped
+            <code>.resx</code>. Fluent is stood in for — the popover renders
+            inline here and through a portal on a real host, so confirm anything
+            that depends on that in <code>npm start</code>.
+            Platform globals in this bundle: <code id="globals">…</code>
+        </p>
+
+        <div class="harness-controls">
+            <label>Start date <input id="start" type="text" placeholder="yyyy-mm-dd" /></label>
+            <label>End date <input id="end" type="text" placeholder="yyyy-mm-dd" /></label>
+            <label>Earliest <input id="min" type="text" placeholder="yyyy-mm-dd" /></label>
+            <label>Latest <input id="max" type="text" placeholder="yyyy-mm-dd" /></label>
+
+            <label>
+                Same day
+                <select id="sameDay">
+                    <option value="allow">allow</option>
+                    <option value="block">block</option>
+                </select>
+            </label>
+
+            <label>
+                Duration
+                <select id="duration">
+                    <option value="show">show</option>
+                    <option value="hide">hide</option>
+                </select>
+            </label>
+
+            <label>
+                Start column
+                <select id="startSecurity">
+                    <option value="none">no field security</option>
+                    <option value="read-only">read-only</option>
+                    <option value="no-access">no access</option>
+                </select>
+            </label>
+
+            <label>
+                End column
+                <select id="endSecurity">
+                    <option value="none">no field security</option>
+                    <option value="read-only">read-only</option>
+                    <option value="no-access">no access</option>
+                </select>
+            </label>
+
+            <label>
+                Host theme
+                <select id="theme">
+                    <option value="none">publishes none</option>
+                    <option value="light">light</option>
+                    <option value="dark">dark</option>
+                </select>
+            </label>
+
+            <label>
+                Date culture
+                <select id="culture">
+                    <option value="platform">Monday-first, from the host</option>
+                    <option value="withheld">host publishes none</option>
+                </select>
+            </label>
+
+            <label>Language <select id="locale"></select></label>
+
+            <label class="harness-check"><input id="startError" type="checkbox" /> Business rule on start</label>
+            <label class="harness-check"><input id="endError" type="checkbox" /> Business rule on end</label>
+            <label class="harness-check"><input id="visible" type="checkbox" checked /> Visible</label>
+            <label class="harness-check"><input id="disabled" type="checkbox" /> Form read-only</label>
+            <label class="harness-check"><input id="rtl" type="checkbox" /> Right-to-left</label>
+
+            <label class="harness-span">
+                Quick ranges
+                <input id="presets" type="text" placeholder="today,last7,thisMonth" />
+            </label>
+
+            <div class="harness-buttons harness-span">
+                <button id="reset" type="button">Reset the notify counter</button>
+                <button id="bare" type="button">Hide the panel (for a screenshot)</button>
+            </div>
+        </div>
+
+        <div class="harness-stage" id="stage"></div>
+
+        <div class="harness-readout">
+            <div>
+                <strong>getOutputs()</strong>
+                <pre id="outputs">…</pre>
+            </div>
+            <div>
+                <strong>notifyOutputChanged calls</strong>
+                <pre id="notifications">0</pre>
+            </div>
+        </div>
+
+        <script src="../node_modules/react/umd/react.development.js"></script>
+        <script src="../node_modules/react-dom/umd/react-dom.development.js"></script>
+        <script>
+            window.__harnessReact = window.React;
+            window.__harnessReactDOM = window.ReactDOM;
+        </script>
+        <script src="fluent-stub.js"></script>
+        <script src="host.js"></script>
+        <script src="harness.js"></script>
+    </body>
+</html>
