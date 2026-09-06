@@ -302,9 +302,11 @@ The general shape of this is worth keeping: **a viewport-relative cap has a
 lower end, and something will find it.** `vh` units read as "a fraction of a
 screen" and are a fraction of whatever box the control was given.
 
-`demo.fidelity` drops to `limited` until the frame grows. Nothing is stubbed
-and every interaction works — what is missing is room to see it, which is what
-`demo.limitations` now says.
+`demo.fidelity` dropped to `limited` for one release while that was true.
+PCFHub fixed the frame — its harness now measures a portalled overlay and
+grows the iframe to fit, so the calendar opens at full size — and `full` is
+honest again from 0.2.2. The limitation is gone rather than reworded: a demo
+note describing a bug somebody else already fixed is worse than none.
 
 ### Still not assertable
 
