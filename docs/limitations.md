@@ -57,12 +57,16 @@ order: 7
   symptom is unmistakable once seen: a range saved as 6 Sep – 31 Oct reads back as
   5 Sep – 30 Oct, both ends off by exactly one day.
 
-  The control writes each date at **midday** rather than midnight to absorb that,
-  which covers roughly twelve hours of disagreement in either direction — enough
-  for almost every real pairing, and not a guarantee. If you see a whole-day shift,
-  check the **Behavior** of both columns in the maker portal before anything else;
-  **Date Only** is the right one for a date range, and a value saved before this
-  fix keeps reading a day early until the row is saved again.
+  From 0.2.5 the control reads each column's **Behavior** and handles both: a
+  Date Only column hands its value over at UTC midnight and the day is read from
+  there, while a User Local column is a real instant and is read locally. Dates
+  are written back at midday in whichever frame the column uses, so neither
+  conversion can land on a day boundary.
+
+  **Date Only is still the right behaviour for a date range**, because it stores
+  a day rather than a moment — but the control no longer depends on your
+  choosing it. If you do change it, note that the change is one-way and does not
+  convert existing rows.
 
 - **Validation blocks the write, not the save.** An invalid pair is never handed to
   the platform, so the columns keep their previous values and the form can still be

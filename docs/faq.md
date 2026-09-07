@@ -43,10 +43,11 @@ stores the value as UTC — and a whole day kept as an instant moves for anyone 
 different timezone from the one that saved it. Both ends shifting by exactly one
 day is the giveaway.
 
-Check the Behavior of both columns first; **Date Only** is the right one for a date
-range. The control anchors each date at midday to absorb around twelve hours of
-disagreement, but a row saved by an older version still holds midnight and will
-keep reading a day early until it is saved again. See
+From 0.2.5 the control reads each column's Behavior and handles both, so this
+should no longer happen either way. **Date Only** remains the right behaviour for
+a date range because it stores a day rather than a moment.
+
+If you are on an earlier version, upgrading is the fix. See
 [Limitations](limitations.md).
 
 ## Why will it not save my range?

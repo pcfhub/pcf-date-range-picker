@@ -146,6 +146,13 @@
          * a value at midday cannot be pushed across a day boundary by twelve
          * hours of disagreement, and one at midnight can.
          */
+        /*
+         * The bound columns' DateTimeFieldBehavior, or undefined for canvas.
+         * Defaults to UserLocal because that is what a column nobody thought
+         * about is, and it is the shape the control saw for its first four
+         * releases.
+         */
+        behavior: 1,
         formatCalls: null,
         formatLocale: null,
         /*
@@ -157,7 +164,32 @@
         dateFormatting: DATE_FORMATTING,
     };
 
-    function property(raw, security, error, message) {
+    /*
+     * A bound date column.
+     *
+     * `behavior` is the column's `DateTimeFieldBehavior`: 1 UserLocal,
+     * 2 DateOnly, 3 TimeZoneIndependent, undefined for canvas (no column at
+     * all). It decides the *shape of the value the platform hands over*, which
+     * is the part no documentation states and which cost four releases to find:
+     *
+     *   UserLocal (1)  a real instant — local midnight for a day
+     *   DateOnly  (2)  the day itself — **UTC** midnight, whatever the browser
+     *
+     * So this fixture builds the value from `day` rather than taking a Date
+     * directly, because handing over a Date would let the caller choose a shape
+     * the platform never produces — and a stub that can produce a shape the
+     * platform cannot is worse than no stub.
+     */
+    function property(day, security, error, message, behavior) {
+        var raw = null;
+
+        if (day !== null && day !== undefined) {
+            raw =
+                behavior === 2 || behavior === 3
+                    ? new Date(Date.UTC(day.getFullYear(), day.getMonth(), day.getDate()))
+                    : new Date(day.getFullYear(), day.getMonth(), day.getDate());
+        }
+
         return {
             raw: raw,
             security: SECURITY[security],
@@ -165,6 +197,9 @@
             // The platform sets no message when there is no error.
             errorMessage: error ? message : undefined,
             type: 'DateAndTime.DateOnly',
+            // Absent entirely on canvas, which is a state the control has to
+            // survive — not `{ Behavior: undefined }`.
+            attributes: behavior === undefined ? undefined : { Behavior: behavior },
         };
     }
 
@@ -207,8 +242,8 @@
 
         return {
             parameters: {
-                startDate: property(o.start, o.startSecurity, o.startError, o.errorMessage),
-                endDate: property(o.end, o.endSecurity, o.endError, o.errorMessage),
+                startDate: property(o.start, o.startSecurity, o.startError, o.errorMessage, o.behavior),
+                endDate: property(o.end, o.endSecurity, o.endError, o.errorMessage, o.behavior),
                 minDate: { raw: o.min, type: 'DateAndTime.DateOnly' },
                 maxDate: { raw: o.max, type: 'DateAndTime.DateOnly' },
                 sameDay: { raw: o.sameDay, type: 'Enum' },

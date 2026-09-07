@@ -2,7 +2,7 @@ import * as React from 'react';
 import { IInputs, IOutputs } from './generated/ManifestTypes';
 import { DateRangePickerControl, IProps } from './components/DateRangePickerControl';
 import { parsePresets, toCalendarLocale } from './calendar';
-import { atMidday, isSameDay, validateRange } from './range';
+import { atMidday, dayFromPlatform, dayToPlatform, isSameDay, validateRange } from './range';
 
 /**
  * A virtual (React) field control over **two** bound columns.
@@ -36,6 +36,15 @@ export class DateRangePicker implements ComponentFramework.ReactControl<IInputs,
     private lastIncomingStart: Date | null | undefined = undefined;
     private lastIncomingEnd: Date | null | undefined = undefined;
 
+    /**
+     * Each column's `Behavior`, kept because `getOutputs` needs it and is
+     * handed no context. Read fresh on every `updateView`, so a column whose
+     * metadata arrives late is picked up rather than frozen at whatever the
+     * first pass saw.
+     */
+    private startBehavior: number | undefined = undefined;
+    private endBehavior: number | undefined = undefined;
+
     public init(
         _context: ComponentFramework.Context<IInputs>,
         notifyOutputChanged: () => void,
@@ -48,11 +57,22 @@ export class DateRangePicker implements ComponentFramework.ReactControl<IInputs,
         const start = context.parameters.startDate;
         const end = context.parameters.endDate;
 
-        // Guarded, not assigned unconditionally — see lastIncoming* above.
-        // Compared by time value, because every pass hands down a fresh Date
-        // object and `!==` on the objects is always true.
-        const incomingStart = start.raw ?? null;
-        const incomingEnd = end.raw ?? null;
+        /*
+         * Guarded, not assigned unconditionally — see lastIncoming* above, and
+         * compared by time value, because every pass hands down a fresh Date
+         * object and `!==` on the objects is always true.
+         *
+         * Each column carries its own `Behavior`, and the day is read out of a
+         * different half of the `Date` depending on it — see `dayFromPlatform`.
+         * Read per column rather than once: they *should* match, and
+         * docs/limitations.md asks for that, but a form where they do not is a
+         * form this should still get right.
+         */
+        this.startBehavior = start.attributes?.Behavior;
+        this.endBehavior = end.attributes?.Behavior;
+
+        const incomingStart = dayFromPlatform(start.raw ?? null, this.startBehavior);
+        const incomingEnd = dayFromPlatform(end.raw ?? null, this.endBehavior);
 
         if (!sameInstant(incomingStart, this.lastIncomingStart)) {
             this.lastIncomingStart = incomingStart;
@@ -178,23 +198,19 @@ export class DateRangePicker implements ComponentFramework.ReactControl<IInputs,
                     return;
                 }
 
-                // Midday, not midnight — see `atMidday`. A date-only value on a
-                // column that behaves as UserLocal is stored as an instant, and
-                // midnight is the one anchor that cannot survive a timezone
-                // disagreement of even an hour.
-                const nextStartValue = nextStart === null ? null : atMidday(nextStart);
-                const nextEndValue = nextEnd === null ? null : atMidday(nextEnd);
-
                 // By day, not by instant. What the platform hands back may sit
                 // at any time on the right day — its own midnight, or the
-                // midday this wrote — and re-notifying over a difference the
+                // midday this writes — and re-notifying over a difference the
                 // control does not care about would dirty the form for nothing.
-                if (sameDay(nextStartValue, this.startDate) && sameDay(nextEndValue, this.endDate)) {
+                if (sameDay(nextStart, this.startDate) && sameDay(nextEnd, this.endDate)) {
                     return;
                 }
 
-                this.startDate = nextStartValue;
-                this.endDate = nextEndValue;
+                // Held as a plain local-midnight day. The shape the platform
+                // wants is `getOutputs`' business, because only it knows the
+                // column's Behavior.
+                this.startDate = nextStart;
+                this.endDate = nextEnd;
                 this.notifyOutputChanged();
             },
         };
@@ -210,9 +226,14 @@ export class DateRangePicker implements ComponentFramework.ReactControl<IInputs,
         // type-checks and quietly turns every clear into a no-op — canvas
         // honours that strictly and the field simply will not empty. The cast
         // is the fix, not a workaround.
+        // Converted here rather than on the way in, so everything between the
+        // two boundaries works in plain local days. See `dayToPlatform`.
+        const startValue = dayToPlatform(this.startDate, this.startBehavior);
+        const endValue = dayToPlatform(this.endDate, this.endBehavior);
+
         return {
-            startDate: this.startDate === null ? (null as unknown as undefined) : this.startDate,
-            endDate: this.endDate === null ? (null as unknown as undefined) : this.endDate,
+            startDate: startValue === null ? (null as unknown as undefined) : startValue,
+            endDate: endValue === null ? (null as unknown as undefined) : endValue,
         };
     }
 

@@ -384,6 +384,122 @@ check(
             .every((call) => call.value.getHours() === 12),
 );
 
+/* --------------------------------------- the day that is not always an instant */
+
+/*
+ * **`context.parameters.x.raw` and `getAttribute().getValue()` do not agree.**
+ *
+ * Measured on a real form, one column, one moment, the same stored day:
+ *
+ *     attribute API   2026-09-18T06:00:00.000Z   local midnight
+ *     PCF raw         2026-09-18T00:00:00.000Z   UTC midnight
+ *
+ * The second is what a `DateOnly`-behaviour column hands a control, and read
+ * with local components in a UTC-6 browser it is **17 September**. Nothing
+ * documents the difference, and the control had read local components since its
+ * first release — correct for UserLocal, where the value really is an instant,
+ * and a day early for the behaviour whose whole point is that it is not.
+ *
+ * What finally separated this from the formatting bug before it: every part of
+ * the control agreed on the wrong day. A mis-formatted value would have
+ * disagreed with the typed inputs, which read local components directly. These
+ * did not disagree, so the value itself was wrong before any of them saw it.
+ */
+const dateOnly = mount({
+    behavior: 2,
+    start: day(2026, 9, 18),
+    end: day(2026, 9, 21),
+});
+
+check(
+    'a DateOnly column hands over UTC midnight, and the day is read out of it',
+    dateOnly.props().startDate.getDate() === 18 && dateOnly.props().endDate.getDate() === 21,
+    `${dateOnly.props().startDate.toDateString()} → ${dateOnly.props().endDate.toDateString()}`,
+);
+
+check(
+    'and the calendar paints that day rather than the one before it',
+    renderDeep(dateOnly.element).includes('data-day="2026-09-18" data-position="start"'),
+);
+
+/*
+ * The same value on a UserLocal column is a genuine instant, where the local
+ * components *are* the day. Reading it the DateOnly way would break it by
+ * exactly as much, in the other direction — which is why this branches on
+ * Behavior rather than picking one rule and hoping.
+ */
+const userLocal = mount({
+    behavior: 1,
+    start: day(2026, 9, 18),
+    end: day(2026, 9, 21),
+});
+
+check(
+    'while a UserLocal column keeps its local reading',
+    userLocal.props().startDate.getDate() === 18 && userLocal.props().endDate.getDate() === 21,
+    `${userLocal.props().startDate.toDateString()} → ${userLocal.props().endDate.toDateString()}`,
+);
+
+/*
+ * Canvas has no column and therefore no Behavior. Absent falls to the instant
+ * reading, which is the one that cannot be wrong about a value it was never
+ * told anything about.
+ */
+check(
+    'and a host with no column metadata at all still reads the day',
+    mount({ behavior: undefined, start: day(2026, 9, 18), end: day(2026, 9, 21) })
+        .props().startDate.getDate() === 18,
+);
+
+/*
+ * The round trip is the thing that has to close. What goes back out is shaped
+ * for the column it came from — UTC midday for a behaviour that stores the day
+ * itself, local midday for an instant — and either way it has to come back as
+ * the same day it went out as.
+ */
+const roundTrip = (behavior) => {
+    const control = mount({ behavior, start: null, end: null });
+
+    control.props().onChange(day(2026, 9, 18), day(2026, 9, 21));
+
+    const out = control.outputs().startDate;
+
+    // Read it back exactly as host.js would have handed it over.
+    return behavior === 2 || behavior === 3 ? out.getUTCDate() : out.getDate();
+};
+
+check(
+    'a day written and read back through a DateOnly column is the same day',
+    roundTrip(2) === 18,
+    `came back as the ${roundTrip(2)}`,
+);
+
+check(
+    'and through a UserLocal column too',
+    roundTrip(1) === 18,
+    `came back as the ${roundTrip(1)}`,
+);
+
+/*
+ * Both anchored at midday in their own frame of reference, never midnight, so
+ * that whichever end converts cannot land on a boundary.
+ */
+check(
+    'both are anchored at midday rather than midnight',
+    (() => {
+        const dateOnlyOut = mount({ behavior: 2, start: null, end: null });
+        const userLocalOut = mount({ behavior: 1, start: null, end: null });
+
+        dateOnlyOut.props().onChange(day(2026, 9, 18), day(2026, 9, 21));
+        userLocalOut.props().onChange(day(2026, 9, 18), day(2026, 9, 21));
+
+        return (
+            dateOnlyOut.outputs().startDate.getUTCHours() === 12
+            && userLocalOut.outputs().startDate.getHours() === 12
+        );
+    })(),
+);
+
 /* ------------------------------------------------- the day that is an instant */
 
 /*

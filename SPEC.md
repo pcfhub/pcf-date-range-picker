@@ -131,6 +131,41 @@ browser's, the Dataverse user's, and whatever the column's behaviour stores in.
 Anchoring at midday is what stops any pair of them disagreeing by less than half
 a day from moving the date.
 
+**And a fourth, which overturns the section this one opens with.** With the
+columns corrected to Date Only and 0.2.4 deployed, the range still read a day
+early — and this time *everything* in the control agreed on the wrong day: the
+grid, the typed inputs and the trigger, all of which read local components
+directly. A mis-formatted value would have disagreed with the typed inputs. This
+did not, so the value was already wrong before any of them saw it.
+
+The measurement, one column, one moment, the same stored day:
+
+| | |
+| --- | --- |
+| `Xrm.Page.getAttribute('cll_startdate').getValue()` | `2026-09-18T06:00:00.000Z` — local midnight |
+| `context.parameters.startDate.raw` | `2026-09-18T00:00:00.000Z` — **UTC** midnight |
+
+**The two APIs do not agree, and nothing documents it.** A `DateOnly`-behaviour
+column hands a *control* the day at UTC midnight, which read with local
+components in a UTC-6 browser is 17 September. That is the whole bug, and it
+appeared only after the columns were switched from UserLocal — under UserLocal
+the value genuinely is an instant and reading it locally was right.
+
+So `Behavior` is **not** nearly irrelevant, and the claim at the top of this
+section was wrong in the half it was most confident about. It decides the shape
+of the value you are handed:
+
+- `1` UserLocal — an instant. Local components are the day.
+- `2` DateOnly, `3` TimeZoneIndependent — the day itself, at UTC midnight. The
+  **UTC** components are the day.
+- `0` or absent `attributes` (canvas) — no column to be wrong about; the
+  instant reading is the safe default.
+
+`dayFromPlatform` and `dayToPlatform` in `range.ts` are the whole fix, and they
+are deliberately the *only* two places that know: everything between them works
+in plain local-midnight days, so the grid, `toInputValue` and `dayNumber` needed
+no changes at all.
+
 The catch that made this invisible: a column can be *formatted* Date Only while
 *behaving* as UserLocal. The manifest's `of-type="DateAndTime.DateOnly"` gates on
 the format, so the control binds happily and nothing anywhere says the two

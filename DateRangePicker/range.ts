@@ -59,6 +59,76 @@ export function fromInputValue(value: string): Date | null {
 }
 
 /**
+ * Whether a column's `Behavior` means the platform keeps the day itself rather
+ * than an instant.
+ *
+ * `2` is DateOnly and `3` is TimeZoneIndependent — both documented as stored
+ * *without conversion to UTC*. `1` is UserLocal, which is stored as UTC and is
+ * therefore a real instant. `0` is None, and an absent `attributes` is canvas,
+ * where there is no column at all; both fall to the instant reading, because
+ * that is the one that cannot be wrong about a value it was never told about.
+ */
+function storesTheDayItself(behavior: number | undefined): boolean {
+    return behavior === 2 || behavior === 3;
+}
+
+/**
+ * The calendar day a bound value means, as a `Date` at **local midnight**.
+ *
+ * This exists because `context.parameters.x.raw` and
+ * `Xrm.Page.getAttribute(...).getValue()` do not agree, which is not something
+ * any documentation says out loud. Measured on a real form, one column, one
+ * moment, the same stored day:
+ *
+ *     attribute API   2026-09-18T06:00:00.000Z   local midnight
+ *     PCF raw         2026-09-18T00:00:00.000Z   UTC midnight
+ *
+ * Read with local components in a UTC-6 browser, the second is **17
+ * September**. Every part of the control agreed on the wrong day — the grid,
+ * the typed inputs and the trigger all read local components — which is what
+ * finally distinguished this from the formatting bug that came before it: a
+ * mis-*formatted* value would have disagreed with the typed inputs, and this
+ * did not.
+ *
+ * So for a behaviour that stores the day itself, the day is in the **UTC**
+ * components, and reading it locally shifts it for everyone west of UTC. For
+ * UserLocal the value is a genuine instant and the local components are right,
+ * which is what the rest of this file has always assumed.
+ *
+ * The whole control works in local-midnight days behind this. Converting once,
+ * here, is what keeps `toInputValue`, `dayNumber` and the calendar grid free of
+ * any of it.
+ */
+export function dayFromPlatform(value: Date | null, behavior: number | undefined): Date | null {
+    if (value === null) {
+        return null;
+    }
+
+    return storesTheDayItself(behavior)
+        ? new Date(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate())
+        : new Date(value.getFullYear(), value.getMonth(), value.getDate());
+}
+
+/**
+ * The same day on the way back out, in whichever shape the column expects.
+ *
+ * Midday in both cases, never midnight, so that neither side's conversion can
+ * push the date across a boundary — `atMidday` explains why at length. The
+ * difference is only *which* midday: a column that stores the day itself is
+ * read back through UTC, so the anchor has to be UTC midday for the round trip
+ * to land on the same date.
+ */
+export function dayToPlatform(value: Date | null, behavior: number | undefined): Date | null {
+    if (value === null) {
+        return null;
+    }
+
+    return storesTheDayItself(behavior)
+        ? new Date(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate(), 12))
+        : atMidday(value);
+}
+
+/**
  * The same calendar day, at **midday** rather than at midnight.
  *
  * This is what the control hands the platform, and the reason is that a
