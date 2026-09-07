@@ -137,10 +137,39 @@ export class DateRangePicker implements ComponentFramework.ReactControl<IInputs,
             // operating system's setting.
             isDark: context.fluentDesignLanguage?.isDarkTheme === true,
             resources: context.resources,
-            formatDate: (date: Date): string => context.formatting.formatDateShort(date),
+            /*
+             * Every one of these formats `atMidday(date)` rather than the date
+             * it was handed, and the reason is that **the platform's formatters
+             * do not render in the browser's timezone.** They render in the
+             * *Dataverse user's*, which is a separate setting and routinely
+             * differs from the machine's.
+             *
+             * A day therefore arrives here as local midnight — which is what the
+             * platform correctly hands back for a Date Only column — and comes
+             * out of `formatDateShort` as the day before, for any user whose
+             * Dataverse timezone is west of their browser's. Reported from a
+             * real form: the columns held 6 Sep and 31 Oct, confirmed against
+             * `getAttribute().getValue()`, and the field rendered
+             * "9/5/2026 – 10/30/2026".
+             *
+             * Midday is the same trick `atMidday` plays on the write side, for
+             * the same reason: a value in the middle of the day cannot be
+             * pushed across a boundary by twelve hours of disagreement. It
+             * costs nothing where the two timezones agree, because midday
+             * formats to the same day midnight would have.
+             *
+             * `formatMonth` is the one that would have been hardest to spot.
+             * It is handed the *first* of the month at local midnight, so a
+             * westward user got the previous month's name over the grid —
+             * "August" above September's days.
+             */
+            formatDate: (date: Date): string =>
+                context.formatting.formatDateShort(atMidday(date)),
             // A day cell shows "14" and must announce "Saturday, 14 March 2026".
-            formatDayLabel: (date: Date): string => context.formatting.formatDateLong(date),
-            formatMonth: (date: Date): string => context.formatting.formatDateYearMonth(date),
+            formatDayLabel: (date: Date): string =>
+                context.formatting.formatDateLong(atMidday(date)),
+            formatMonth: (date: Date): string =>
+                context.formatting.formatDateYearMonth(atMidday(date)),
             onChange: (nextStart: Date | null, nextEnd: Date | null): void => {
                 // A range that breaks a rule is shown but never handed over, so
                 // the columns cannot hold a backwards pair. The component keeps

@@ -136,6 +136,17 @@
          * where the point is what a user would see rather than which code path
          * produced it.
          */
+        /*
+         * An array the three formatters push each argument into, or null.
+         *
+         * The platform's formatters render in the *Dataverse user's* timezone
+         * rather than the browser's, which is a difference this fixture cannot
+         * reproduce — nothing here has two timezones. What it can do is show
+         * what the control handed over, which is the half the control controls:
+         * a value at midday cannot be pushed across a day boundary by twelve
+         * hours of disagreement, and one at midnight can.
+         */
+        formatCalls: null,
         formatLocale: null,
         /*
          * Withheld by passing `null`, which is what a host publishing no date
@@ -225,6 +236,10 @@
              */
             formatting: o.formatLocale ? plainFormatting(o.formatLocale) : {
                 formatDateShort: function (value) {
+                    if (o.formatCalls) {
+                        o.formatCalls.push({ fn: 'formatDateShort', value: value });
+                    }
+
                     return (
                         'fmt:'
                         + value.getFullYear()
@@ -236,6 +251,10 @@
                 },
 
                 formatDateLong: function (value) {
+                    if (o.formatCalls) {
+                        o.formatCalls.push({ fn: 'formatDateLong', value: value });
+                    }
+
                     return (
                         'long:'
                         + value.getFullYear()
@@ -247,6 +266,10 @@
                 },
 
                 formatDateYearMonth: function (value) {
+                    if (o.formatCalls) {
+                        o.formatCalls.push({ fn: 'formatDateYearMonth', value: value });
+                    }
+
                     return (
                         'ym:'
                         + value.getFullYear()

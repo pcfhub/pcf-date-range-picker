@@ -101,6 +101,36 @@ still hold midnight**, so they keep reading a day early until they are saved aga
 The real fix is the column's behaviour, which `docs/limitations.md` has always
 said should be **Date Only**.
 
+**And there was a third one underneath both, on the display side.** With the
+columns corrected to Date Only, the platform handed back exactly the right days
+— measured on the form, `getAttribute().getValue()` returning
+`2026-09-06T06:00:00.000Z`, which is local midnight and the right date — and the
+field still rendered "9/5/2026 – 10/30/2026".
+
+Nothing was wrong with the value. **`context.formatting` does not render in the
+browser's timezone.** It renders in the *Dataverse user's*, a separate setting
+that routinely differs from the machine's, so a day handed over as local midnight
+formats as the day before for anyone whose Dataverse timezone is west of their
+browser's. The stored data is right, the read is right, and only the text is
+wrong — which is the most confusing shape a date bug can take, because every
+check of the data agrees with you.
+
+It reached four places, and the worst was the least visible: `formatDateYearMonth`
+is handed the *first* of the month, so a westward user read "August" over
+September's grid. The two that show are the trigger and the duration line; the
+fourth is every day cell's `aria-label`, where only a screen-reader user would
+have found it.
+
+The fix is the same anchor as the write side — `atMidday` before every
+`context.formatting` call — for the same reason: a value in the middle of the
+day cannot be pushed across a boundary by twelve hours of disagreement.
+
+Three bugs, one shape. **A whole day held as an instant is a day only as long as
+nobody changes timezone, and there are three separate timezones in play** — the
+browser's, the Dataverse user's, and whatever the column's behaviour stores in.
+Anchoring at midday is what stops any pair of them disagreeing by less than half
+a day from moving the date.
+
 The catch that made this invisible: a column can be *formatted* Date Only while
 *behaving* as UserLocal. The manifest's `of-type="DateAndTime.DateOnly"` gates on
 the format, so the control binds happily and nothing anywhere says the two

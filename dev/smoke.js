@@ -330,6 +330,60 @@ check(
     String(unchanged.notifications()),
 );
 
+/* ------------------------------------- what the platform's formatters are given */
+
+/*
+ * **The platform's formatters do not render in the browser's timezone.**
+ *
+ * They render in the *Dataverse user's*, which is a separate setting and
+ * routinely differs from the machine's. So a day handed to them as local
+ * midnight comes back as the day before for anyone whose Dataverse timezone is
+ * west of their browser's — and that is display only, with the stored value
+ * perfectly correct, which is what makes it so confusing to look at.
+ *
+ * Reported from a real form after the columns had already been corrected to
+ * Date Only: `getAttribute().getValue()` returned 2026-09-06T06:00:00.000Z and
+ * 2026-10-31T06:00:00.000Z — the right days, local midnight — and the field
+ * rendered "9/5/2026 – 10/30/2026".
+ *
+ * This fixture has one timezone and cannot reproduce the disagreement. What it
+ * can hold is the half the control owns: everything handed to a platform
+ * formatter is anchored at midday, where twelve hours of difference cannot push
+ * it across a day boundary.
+ *
+ * `formatMonth` is the one worth naming. It is handed the *first* of the month,
+ * so at midnight a westward user read the previous month's name over the grid.
+ */
+const formatCalls = [];
+
+renderDeep(mount({ formatCalls }).element);
+
+check(
+    'every date handed to a platform formatter is anchored at midday',
+    formatCalls.length > 0 && formatCalls.every((call) => call.value.getHours() === 12),
+    (() => {
+        const wrong = formatCalls.filter((call) => call.value.getHours() !== 12);
+
+        return `${formatCalls.length} calls, ${wrong.length} not at midday`;
+    })(),
+);
+
+check(
+    'including the month headings, which are handed the first of the month',
+    formatCalls.some((call) => call.fn === 'formatDateYearMonth')
+        && formatCalls
+            .filter((call) => call.fn === 'formatDateYearMonth')
+            .every((call) => call.value.getHours() === 12 && call.value.getDate() === 1),
+);
+
+check(
+    'and the day labels, one per cell',
+    formatCalls.some((call) => call.fn === 'formatDateLong')
+        && formatCalls
+            .filter((call) => call.fn === 'formatDateLong')
+            .every((call) => call.value.getHours() === 12),
+);
+
 /* ------------------------------------------------- the day that is an instant */
 
 /*
