@@ -248,7 +248,22 @@ browser — and neither was reachable from `npm run smoke`:
   next — and keying on the date alone matched both copies. The ref map had the
   same collision, so focusing a date reached whichever month rendered last.
 
-Both are now asserted, because both turned out to be visible in
+A third arrived from a user looking at the published demo, and it is the one
+that made the pattern worth naming: **a range ending in the right-hand month
+drew three solid marks.** The start, and the end *twice* — once in the left
+month's trailing row and once where it belongs. The pair behind it was correct
+throughout, which is exactly why it reads as broken and checks out as right.
+
+All three are the same mistake wearing different clothes: **a date drawn in two
+grids is one date wearing two hats, and every per-date decision has to pick a
+hat.** The tabindex picked both. The ref map picked whichever rendered last. The
+range paint picked both. Suppressing the duplicate each time would have been
+three fixes; drawing each date once is one, and it makes the next member of the
+family unreachable rather than merely handled — a day outside its own month is
+now an empty cell. The cell stays, so the grid keeps six rows and the popover
+keeps its height.
+
+Both of the first two are now asserted, because both turned out to be visible in
 `renderToStaticMarkup`. That is the honest sequence and worth keeping: the
 browser found them, the suite keeps them found.
 

@@ -536,16 +536,73 @@ check(
     `${count(markup, /tabindex="0"/g)} tabbable days`,
 );
 
+/*
+ * **No date is drawn twice**, which is what makes the assertion above hold
+ * rather than merely happen to.
+ *
+ * Both grids are built as six full rows, so the left month's trailing days are
+ * the right month's leading days — fourteen dates with a cell in each. They
+ * used to carry a button apiece, and this assertion used to check that the
+ * overlap *existed*, because at the time the roving tabindex had to work around
+ * it. Pointing it the other way is what the fix is.
+ */
 check(
-    'even though the two grids draw some of the same dates twice over',
+    'no date has two buttons, across both months',
     (() => {
         const days = markup.match(/data-day="(\d{4}-\d{2}-\d{2})"/g) || [];
         const twice = days.filter((day, at) => days.indexOf(day) !== at);
 
-        // The exact count depends on where the two months fall, so this
-        // asserts the overlap exists rather than a number that would be right
-        // for March and wrong for April.
-        return twice.length > 0 && days.length === 84;
+        return twice.length === 0;
+    })(),
+    (() => {
+        const days = markup.match(/data-day="(\d{4}-\d{2}-\d{2})"/g) || [];
+
+        return `${days.filter((day, at) => days.indexOf(day) !== at).length} drawn twice`;
+    })(),
+);
+
+/*
+ * A day belonging to the month next door is an empty cell, so the grid keeps
+ * its shape — 84 cells and six rows a month — while holding 61 days for March
+ * and April. That is the six-row height guarantee and the no-duplicates rule
+ * being true at the same time, which is the whole point of drawing the cell and
+ * omitting only its button.
+ */
+check(
+    'the cells stay even though the out-of-month days are gone',
+    count(markup, /DateRangePicker-cell--empty/g)
+        + count(markup, /data-day="/g) === 84,
+    `${count(markup, /DateRangePicker-cell--empty/g)} empty + ${count(markup, /data-day="/g)} days`,
+);
+
+/*
+ * **The reported bug, in one assertion.**
+ *
+ * A range ending in the right-hand month drew three solid marks: the start, and
+ * the end twice over — once in the left month's trailing row and once where it
+ * belongs. Reported against 20 Aug – 5 Sep on the published demo, which is the
+ * case rendered here. The pair behind it was always correct; only the painting
+ * was doubled, which is why it read as broken and checked out as right.
+ */
+const spanning = renderDeep(
+    mount({ start: day(2026, 8, 20), end: day(2026, 9, 5) }).element,
+);
+
+check(
+    'a range crossing the month boundary has one start and one end, not three marks',
+    count(spanning, /data-position="start"/g) === 1
+        && count(spanning, /data-position="end"/g) === 1,
+    `${count(spanning, /data-position="start"/g)} start, ${count(spanning, /data-position="end"/g)} end`,
+);
+
+check(
+    'and paints each day of it once',
+    (() => {
+        const banded = [...spanning.matchAll(/data-day="([^"]+)" data-position="between"/g)].map(
+            (match) => match[1],
+        );
+
+        return banded.filter((date, at) => banded.indexOf(date) !== at).length === 0;
     })(),
 );
 

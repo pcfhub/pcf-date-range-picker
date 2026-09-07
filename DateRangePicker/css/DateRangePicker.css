@@ -400,10 +400,6 @@
     cursor: pointer;
 }
 
-.DateRangePicker-popover .DateRangePicker-day.is-outside {
-    color: var(--colorNeutralForeground4, #707070);
-}
-
 .DateRangePicker-popover .DateRangePicker-day:hover:not(:disabled) {
     background-color: var(--colorSubtleBackgroundHover, #f5f5f5);
 }

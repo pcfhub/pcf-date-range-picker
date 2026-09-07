@@ -128,18 +128,17 @@ export function RangeCalendar(props: IRangeCalendarProps): React.ReactElement {
     /*
      * Which single day carries the tab stop.
      *
-     * **A date is drawn twice.** The trailing days of the left month are the
-     * leading days of the right one, so fourteen dates have two buttons in this
-     * popover — and keying the roving tabindex on the date alone put `0` on
-     * both, which is two tab stops for a grid that is meant to be one. Only the
-     * copy inside its own month is eligible, which is also why the ref below is
-     * registered only for those: with both copies in the map, focusing a date
-     * moved focus to whichever month rendered last.
+     * Every date now has exactly one button — `renderDay` draws nothing for a
+     * day outside its own month — so this no longer has to disambiguate two
+     * copies of the same date. It used to: the trailing days of the left month
+     * are the leading days of the right one, and keying the roving tabindex on
+     * the date alone put `0` on both.
      *
-     * The fallback matters when the month arrows have paged the window away
-     * from the focused day. Without it no button is eligible, the grid drops
-     * out of the tab order entirely, and a keyboard user is stranded in the
-     * popover with no way back to the days.
+     * What is still load-bearing is the fallback. When the month arrows have
+     * paged the window away from the focused day, no button matches it — and
+     * without landing on the left month's first day instead, the grid drops out
+     * of the tab order entirely and a keyboard user is stranded in the popover
+     * with no way back to the days.
      */
     const inWindow = (date: Date): boolean => {
         const month = date.getFullYear() * 12 + date.getMonth();
@@ -261,14 +260,41 @@ export function RangeCalendar(props: IRangeCalendarProps): React.ReactElement {
 
     const renderDay = (date: Date, inMonth: boolean): React.ReactElement => {
         const key = toInputValue(date);
+
+        /*
+         * A day belonging to the month next door is drawn as an empty cell.
+         *
+         * Both grids are built as six full rows, so August's carries September
+         * 1–5 and September's carries August 30–31 — fourteen dates with a
+         * button in each. Painting the range on both copies drew the end cap
+         * *twice*: a two-ended range showed three solid marks, which reads as
+         * broken even though the pair behind it is correct. Reported against
+         * 20 Aug – 5 Sep, where the end appeared in August's last row and again
+         * in September.
+         *
+         * Suppressing the second cap would have fixed the symptom. Drawing each
+         * date once makes it unreachable, and it is what every two-month range
+         * picker does — the cell stays so the grid keeps its shape and its six
+         * rows, which is what stops the popover changing height between months.
+         *
+         * The band ends flush against the edge of the last in-month cell rather
+         * than announcing itself: a day mid-range is already square rather than
+         * rounded, so a band cut off at the month's edge reads as continuing.
+         */
+        if (!inMonth) {
+            return (
+                <div
+                    className="DateRangePicker-cell DateRangePicker-cell--empty"
+                    role="gridcell"
+                    key={key}
+                />
+            );
+        }
+
         const position = positionInRange(date, paintedStart, paintedEnd);
         const enabled = selectable(date);
 
         const classes = ['DateRangePicker-day'];
-
-        if (!inMonth) {
-            classes.push('is-outside');
-        }
 
         if (position !== 'none') {
             classes.push(`is-${position}`);
@@ -288,17 +314,13 @@ export function RangeCalendar(props: IRangeCalendarProps): React.ReactElement {
                     // decisions, where the markup is one rendering of them.
                     data-day={key}
                     data-position={position}
-                    // Registered only for the copy inside its own month, so
-                    // each date has exactly one entry. See `tabDay` above.
                     ref={(node): void => {
-                        if (inMonth) {
-                            days.current[key] = node;
-                        }
+                        days.current[key] = node;
                     }}
                     disabled={!enabled}
                     aria-selected={position !== 'none'}
                     aria-label={props.formatDayLabel(date)}
-                    tabIndex={inMonth && isSameDay(date, tabDay) ? 0 : -1}
+                    tabIndex={isSameDay(date, tabDay) ? 0 : -1}
                     onFocus={(): void => setFocusDay(date)}
                     onMouseEnter={(): void => setHovered(date)}
                     onMouseLeave={(): void => setHovered(null)}
