@@ -2,7 +2,7 @@ import * as React from 'react';
 import { IInputs, IOutputs } from './generated/ManifestTypes';
 import { DateRangePickerControl, IProps } from './components/DateRangePickerControl';
 import { parsePresets, toCalendarLocale } from './calendar';
-import { validateRange } from './range';
+import { atMidday, isSameDay, validateRange } from './range';
 
 /**
  * A virtual (React) field control over **two** bound columns.
@@ -149,12 +149,23 @@ export class DateRangePicker implements ComponentFramework.ReactControl<IInputs,
                     return;
                 }
 
-                if (sameInstant(nextStart, this.startDate) && sameInstant(nextEnd, this.endDate)) {
+                // Midday, not midnight — see `atMidday`. A date-only value on a
+                // column that behaves as UserLocal is stored as an instant, and
+                // midnight is the one anchor that cannot survive a timezone
+                // disagreement of even an hour.
+                const nextStartValue = nextStart === null ? null : atMidday(nextStart);
+                const nextEndValue = nextEnd === null ? null : atMidday(nextEnd);
+
+                // By day, not by instant. What the platform hands back may sit
+                // at any time on the right day — its own midnight, or the
+                // midday this wrote — and re-notifying over a difference the
+                // control does not care about would dirty the form for nothing.
+                if (sameDay(nextStartValue, this.startDate) && sameDay(nextEndValue, this.endDate)) {
                     return;
                 }
 
-                this.startDate = nextStart;
-                this.endDate = nextEnd;
+                this.startDate = nextStartValue;
+                this.endDate = nextEndValue;
                 this.notifyOutputChanged();
             },
         };
@@ -192,4 +203,21 @@ function sameInstant(a: Date | null | undefined, b: Date | null | undefined): bo
     }
 
     return a.getTime() === b.getTime();
+}
+
+/**
+ * Whether two values mean the same calendar day, `null` included.
+ *
+ * Used where `sameInstant` would be too strict: deciding whether an edit is
+ * worth handing to the platform. This control edits whole days, so two values
+ * on the same day are the same value however far apart their clocks are — and
+ * they will be, since what goes out is anchored at midday and what comes back
+ * is whatever the column stored.
+ */
+function sameDay(a: Date | null, b: Date | null): boolean {
+    if (a === null || b === null) {
+        return a === b;
+    }
+
+    return isSameDay(a, b);
 }

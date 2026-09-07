@@ -293,8 +293,11 @@ edited.update({});
 
 check(
     'and survives a re-render carrying the platform’s older values',
-    edited.props().startDate.getTime() === day(2026, 4, 1).getTime()
-        && edited.props().endDate.getTime() === day(2026, 4, 10).getTime(),
+    // By day, not by instant. What the control kept is anchored at midday now,
+    // and this asks whether the *edit* survived — the clock it is carried on is
+    // `atMidday`'s business, asserted where that decision is made.
+    edited.props().startDate.toDateString() === day(2026, 4, 1).toDateString()
+        && edited.props().endDate.toDateString() === day(2026, 4, 10).toDateString(),
     `${edited.props().startDate.toDateString()} → ${edited.props().endDate.toDateString()}`,
 );
 
@@ -325,6 +328,83 @@ check(
     'handing back the values it already had does not notify',
     unchanged.notifications() === 0,
     String(unchanged.notifications()),
+);
+
+/* ------------------------------------------------- the day that is an instant */
+
+/*
+ * **What leaves this control is anchored at midday.**
+ *
+ * `DateTimeFieldBehavior` 1 (UserLocal) stores a date as UTC, and a column can
+ * be *formatted* Date Only while *behaving* that way — a misconfiguration with
+ * no visible symptom until a timezone disagrees. Anchored at midnight, the
+ * value breaks at the first hour of difference between the browser and the
+ * Dataverse user: a day picked at 00:00 in a UTC-6 browser is 06:00Z, still the
+ * previous day for every viewer west of it.
+ *
+ * Reported from a real form — 6 Sep – 31 Oct came back as 5 Sep – 30 Oct, both
+ * ends one day early. Midday buys about twelve hours of tolerance in either
+ * direction instead of none, and matches what pcfhub.json's demo presets have
+ * always written.
+ */
+const anchored = mount({ start: null, end: null });
+
+anchored.props().onChange(day(2026, 9, 6), day(2026, 10, 31));
+
+check(
+    'what it hands the platform sits at midday, not at midnight',
+    anchored.outputs().startDate.getHours() === 12
+        && anchored.outputs().endDate.getHours() === 12,
+    `${anchored.outputs().startDate.getHours()}:00 and ${anchored.outputs().endDate.getHours()}:00`,
+);
+
+check(
+    'and still names the day that was picked',
+    anchored.outputs().startDate.getDate() === 6
+        && anchored.outputs().startDate.getMonth() === 8
+        && anchored.outputs().endDate.getDate() === 31
+        && anchored.outputs().endDate.getMonth() === 9,
+);
+
+/*
+ * The tolerance that buys, stated as the thing that failed: read the emitted
+ * instant back in a spread of timezones and count how many still name the day
+ * the user picked. Midnight from a UTC-6 browser fails every viewer west of
+ * UTC-6; midday fails none of these.
+ */
+check(
+    'so the day survives being read in another timezone',
+    (() => {
+        const at = (date, offset) => {
+            const moved = new Date(date.getTime() + offset * 3600000);
+
+            return `${moved.getUTCFullYear()}-${moved.getUTCMonth() + 1}-${moved.getUTCDate()}`;
+        };
+
+        // The browser this runs in is the reference; these are viewers within
+        // half a day of it, which is every real pairing short of the extremes.
+        return [-11, -8, -6, 0, 5].every(
+            (offset) => at(anchored.outputs().startDate, offset) === '2026-9-6',
+        );
+    })(),
+);
+
+/*
+ * The other half of the same change: what comes back may sit at any time on the
+ * right day — the column's own midnight, or the midday this wrote — so "did it
+ * change" is asked by day. Comparing instants would answer yes to a difference
+ * the control does not care about, and dirty the form on a pick that changed
+ * nothing.
+ */
+const repicked = mount({ start: null, end: null });
+
+repicked.props().onChange(day(2026, 9, 6), day(2026, 10, 31));
+repicked.props().onChange(day(2026, 9, 6), day(2026, 10, 31));
+
+check(
+    'picking the same two days again does not notify a second time',
+    repicked.notifications() === 1,
+    `${repicked.notifications()} notifications`,
 );
 
 /* ------------------------------------------------------------ the rules */

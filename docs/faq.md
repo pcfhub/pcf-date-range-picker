@@ -37,8 +37,16 @@ It should not be, and this is worth reporting if you see it. The control reads a
 writes calendar days from local components specifically so that a day chosen in one
 timezone reads back as the same day in another.
 
-The usual cause when it does happen is the two columns having different date
-behaviours in Dataverse. Give both the **Date Only** behaviour — see
+The usual cause is the column's **Behavior** rather than its format. A column can
+show as Date Only in the maker portal and still behave as **User Local**, which
+stores the value as UTC — and a whole day kept as an instant moves for anyone in a
+different timezone from the one that saved it. Both ends shifting by exactly one
+day is the giveaway.
+
+Check the Behavior of both columns first; **Date Only** is the right one for a date
+range. The control anchors each date at midday to absorb around twelve hours of
+disagreement, but a row saved by an older version still holds midnight and will
+keep reading a day early until it is saved again. See
 [Limitations](limitations.md).
 
 ## Why will it not save my range?

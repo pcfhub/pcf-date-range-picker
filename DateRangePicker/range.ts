@@ -59,6 +59,48 @@ export function fromInputValue(value: string): Date | null {
 }
 
 /**
+ * The same calendar day, at **midday** rather than at midnight.
+ *
+ * This is what the control hands the platform, and the reason is that a
+ * date-only value does not always stay a date.
+ *
+ * `DateTimeFieldBehavior` (the platform's own typings) has three live values,
+ * and they do not agree with each other:
+ *
+ *   1 UserLocal            dates stored as UTC
+ *   2 DateOnly             stored as midnight, no conversion to UTC
+ *   3 TimeZoneIndependent  stored without conversion to UTC
+ *
+ * Only **1** converts, and a column can be *formatted* Date Only while
+ * *behaving* as UserLocal — a common and invisible misconfiguration. On such a
+ * column the value is an instant, and the day it reads back as depends on the
+ * timezone it is read in. Anchored at midnight, that breaks at the very first
+ * hour of difference between the browser and the Dataverse user's timezone:
+ * a day picked at 00:00 in a UTC-6 browser is 06:00Z, which is still the
+ * *previous* day for every viewer west of UTC-6.
+ *
+ * Reported from a real form: a range picked as 6 Sep – 31 Oct came back as
+ * 5 Sep – 30 Oct, both ends exactly one day early.
+ *
+ * Midday moves the anchor to the middle of the day, so the same value survives
+ * roughly twelve hours of disagreement in either direction instead of none.
+ * It is what `pcfhub.json`'s demo presets have always used — every date in
+ * them is written `…T12:00:00` — so this only brings the control into line
+ * with its own fixtures.
+ *
+ * **It is not a guarantee.** A mismatch beyond about twelve hours still shifts
+ * the day, and nothing a control can do from inside the browser fixes a column
+ * that stores a day as an instant. Give both columns the **Date Only**
+ * behaviour; docs/limitations.md says so for this reason.
+ *
+ * Behaviour 2 and 3 do not convert at all, so the time of day is discarded and
+ * midday costs them nothing.
+ */
+export function atMidday(date: Date): Date {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12);
+}
+
+/**
  * The calendar day as a whole number, built as a UTC instant out of *local*
  * components. Subtracting two of these is DST-proof, where subtracting the
  * timestamps directly is off by an hour across a transition — enough to make

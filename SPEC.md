@@ -71,6 +71,41 @@ All three named behaviours hand over a `Date` whose **local** components are the
 calendar date the user means. So reading them locally is correct for every one, and
 no branch is needed.
 
+**That was right about reading and quiet about writing, and 0.2.3 is the bill for
+the difference.** Look at behaviour 1 again: *dates stored as UTC*. A value handed
+to that column is an instant, not a day — and which day it reads back as depends on
+the timezone it is read in. The control emitted local **midnight**, which is the
+one anchor with no tolerance at all: a day picked at 00:00 in a UTC-6 browser is
+06:00Z, still the *previous* day for every viewer west of UTC-6.
+
+Reported from a real form: 6 Sep – 31 Oct came back as 5 Sep – 30 Oct, both ends
+exactly one day early. Measured across viewers, from a UTC-6 browser:
+
+| viewer | from midnight | from midday |
+| --- | --- | --- |
+| UTC-11 | **09-05** | 09-06 |
+| UTC-8 | **09-05** | 09-06 |
+| UTC-6 | 09-06 | 09-06 |
+| UTC+5 | 09-06 | 09-06 |
+| UTC+9 | 09-06 | **09-07** |
+
+Midnight fails every viewer west of the browser; midday fails only those more than
+about twelve hours east of it. So the control now writes `atMidday` — which is
+what `pcfhub.json`'s demo presets had used all along, every date in them written
+`…T12:00:00`. The fixtures knew; the control did not.
+
+Two honest limits on that. It is a **wider window, not a guarantee** — beyond
+roughly twelve hours of disagreement the day still moves, and no client-side code
+fixes a column that stores a day as an instant. And **rows written before 0.2.3
+still hold midnight**, so they keep reading a day early until they are saved again.
+The real fix is the column's behaviour, which `docs/limitations.md` has always
+said should be **Date Only**.
+
+The catch that made this invisible: a column can be *formatted* Date Only while
+*behaving* as UserLocal. The manifest's `of-type="DateAndTime.DateOnly"` gates on
+the format, so the control binds happily and nothing anywhere says the two
+disagree.
+
 **The day-shift is not in reading the `Date`. It is in serialising it.** Measured,
 not reasoned about — the same two operations under two real timezones:
 
@@ -357,6 +392,9 @@ reach.
   `dateFormattingInfo` is unknown.** Both have fallbacks — `webLightTheme` and a
   Sunday-first English culture — so the demo renders either way, but the hub's
   screenshot may not match a themed form.
-- **The `Behavior` conclusion** is drawn from the platform's own typings and from
-  timezone tests of the boundary functions, not from a live environment with a
-  column of each behaviour.
+- **The `Behavior` conclusion** was drawn from the platform's own typings and from
+  timezone tests of the boundary functions, not from a live environment — and a
+  live form found the half it got wrong, which is written up under *Timezones*
+  above. What is still unverified is the other direction: no column of each
+  behaviour has been observed, so how each one round-trips `atMidday` is still
+  read from the typings rather than seen.

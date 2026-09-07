@@ -19,7 +19,7 @@
       release workflow checks the tag against the control manifest; this is the
       third copy, and the one Dataverse shows in the solutions list.
     -->
-    <Version>0.2.2</Version>
+    <Version>0.2.3</Version>
     <!-- Managed(1)/Unmanaged(0)/Both(2). Both, to match the cdsproj. -->
     <Managed>2</Managed>
     <Publisher>

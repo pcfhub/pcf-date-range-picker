@@ -48,12 +48,21 @@ order: 7
   calendar that can only commit one end. What the user *may* read is still shown:
   a denied column reads "Hidden" rather than blank.
 
-- **The two columns should share a date behaviour.** Dataverse lets each column be
-  User Local, Date Only or Time Zone Independent. The control reads both in local
-  calendar terms, which is correct for each behaviour on its own — but a pair split
-  across two different behaviours can still disagree about what "the same day"
-  means for users in other timezones. Give both columns the same behaviour;
-  **Date Only** is the right one for a date range.
+- **Both columns want the Date Only *behaviour*, not just the format.** Dataverse
+  lets each column be User Local, Date Only or Time Zone Independent, and this is
+  separate from the column's format — a column can read as Date Only in the maker
+  portal while behaving as **User Local**, which stores the value as UTC. On such a
+  column a whole day is kept as an instant, so it can come back as the day before
+  or after for anyone whose timezone differs from the one it was saved in. The
+  symptom is unmistakable once seen: a range saved as 6 Sep – 31 Oct reads back as
+  5 Sep – 30 Oct, both ends off by exactly one day.
+
+  The control writes each date at **midday** rather than midnight to absorb that,
+  which covers roughly twelve hours of disagreement in either direction — enough
+  for almost every real pairing, and not a guarantee. If you see a whole-day shift,
+  check the **Behavior** of both columns in the maker portal before anything else;
+  **Date Only** is the right one for a date range, and a value saved before this
+  fix keeps reading a day early until the row is saved again.
 
 - **Validation blocks the write, not the save.** An invalid pair is never handed to
   the platform, so the columns keep their previous values and the form can still be
