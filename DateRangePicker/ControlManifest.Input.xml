@@ -7,7 +7,7 @@
   -->
   <control namespace="PCFHub"
            constructor="DateRangePicker"
-           version="0.2.5"
+           version="0.2.6"
            display-name-key="DateRangePicker_Name"
            description-key="DateRangePicker_Desc"
            control-type="virtual">

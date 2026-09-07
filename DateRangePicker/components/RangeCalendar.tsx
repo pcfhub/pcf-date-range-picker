@@ -2,10 +2,15 @@ import * as React from 'react';
 import { dayNumber, fromInputValue, isSameDay, toInputValue } from '../range';
 import {
     CalendarLocale,
+    CalendarView,
     addDays,
     addMonths,
     buildMonth,
+    moveFocus,
+    pageWindow,
+    pointAt,
     positionInRange,
+    rangeToPaint,
     startOfMonth,
     startOfWeek,
     weekdayHeaders,
@@ -45,67 +50,79 @@ export interface IRangeCalendarProps {
  * keyboard is below.
  */
 export function RangeCalendar(props: IRangeCalendarProps): React.ReactElement {
-    const anchored = props.anchor !== null;
-
     /*
-     * The month shown on the left. Seeded from the range and re-seeded when the
-     * *committed* start moves — a preset or a typed date should bring its month
-     * into view, while paging with the arrows must not be undone by a re-render.
+     * The window, the focus and the pointer, as one value.
+     *
+     * They are one value rather than three states because the transitions
+     * between them are where this grid's bugs live — see `CalendarView` in
+     * `calendar.ts`, which holds them and the four moves that change them, so
+     * the moves can be asserted without rendering anything.
+     *
+     * The window is seeded from the range and re-seeded when the *committed*
+     * start moves — a preset or a typed date should bring its month into view,
+     * while paging with the arrows must not be undone by a re-render.
      *
      * With nothing chosen yet it opens on today, clamped into the maker's
      * bounds: a booking window that opens next quarter would otherwise open on
      * a month in which every single day is disabled, which reads as a broken
      * calendar rather than as a bounded one.
      */
-    const [leftMonth, setLeftMonth] = React.useState<Date>(() => {
-        if (props.start !== null) {
-            return startOfMonth(props.start);
-        }
+    const [view, setView] = React.useState<CalendarView>(() => {
+        const opening = (): Date => {
+            if (props.start !== null) {
+                return startOfMonth(props.start);
+            }
 
-        if (props.min !== null && dayNumber(props.today) < dayNumber(props.min)) {
-            return startOfMonth(props.min);
-        }
+            if (props.min !== null && dayNumber(props.today) < dayNumber(props.min)) {
+                return startOfMonth(props.min);
+            }
 
-        if (props.max !== null && dayNumber(props.today) > dayNumber(props.max)) {
-            // The right-hand month is the later of the two, so land the window
-            // on the bound rather than a month past it.
-            return startOfMonth(addMonths(props.max, -1));
-        }
+            if (props.max !== null && dayNumber(props.today) > dayNumber(props.max)) {
+                // The right-hand month is the later of the two, so land the
+                // window on the bound rather than a month past it.
+                return startOfMonth(addMonths(props.max, -1));
+            }
 
-        return startOfMonth(props.today);
+            return startOfMonth(props.today);
+        };
+
+        return {
+            leftMonth: opening(),
+            // Exactly one day is in the tab order at a time, so the grid is one
+            // stop rather than forty-two.
+            focusDay: props.start ?? props.today,
+            pointed: null,
+        };
     });
 
     const anchorMonth = props.start === null ? null : toInputValue(startOfMonth(props.start));
 
     React.useEffect(() => {
         if (anchorMonth !== null) {
-            setLeftMonth(startOfMonth(fromInputValue(anchorMonth) as Date));
+            const month = startOfMonth(fromInputValue(anchorMonth) as Date);
+
+            setView((current) => ({ ...current, leftMonth: month }));
         }
     }, [anchorMonth]);
 
-    // The day the arrow keys are sitting on. Exactly one day is in the tab
-    // order at a time, so the grid is one stop rather than forty-two.
-    const [focusDay, setFocusDay] = React.useState<Date>(
-        () => props.start ?? props.today,
-    );
-    const [hovered, setHovered] = React.useState<Date | null>(null);
-
     /*
-     * A new anchor becomes the focused day, so the preview starts as the single
-     * day just clicked rather than as a range back to wherever focus happened
-     * to be.
+     * A new anchor becomes the focused day and clears whatever was being
+     * pointed at, so the preview starts as the single day just clicked rather
+     * than as a range back to wherever the focus or the pointer happened to be.
      *
-     * A real click focuses the button it hit, which sets `focusDay` anyway — so
-     * this is only load-bearing when it does not, which is every synthetic
-     * click and any host that suppresses focus on pointer input. Depending on a
-     * side effect of focus for what the user *sees* is the kind of thing that
-     * works everywhere except where it is looked at.
+     * A real click focuses the button it hit and has already pointed at it, so
+     * this is only load-bearing when neither happened: every synthetic click,
+     * a preset, and any host that suppresses focus on pointer input. Depending
+     * on a side effect of focus for what the user *sees* is the kind of thing
+     * that works everywhere except where it is looked at.
      */
     const anchorDay = props.anchor === null ? null : toInputValue(props.anchor);
 
     React.useEffect(() => {
         if (anchorDay !== null) {
-            setFocusDay(fromInputValue(anchorDay) as Date);
+            const day = fromInputValue(anchorDay) as Date;
+
+            setView((current) => ({ ...current, focusDay: day, pointed: null }));
         }
     }, [anchorDay]);
 
@@ -120,10 +137,10 @@ export function RangeCalendar(props: IRangeCalendarProps): React.ReactElement {
         }
 
         wantsFocus.current = false;
-        days.current[toInputValue(focusDay)]?.focus();
+        days.current[toInputValue(view.focusDay)]?.focus();
     });
 
-    const rightMonth = addMonths(leftMonth, 1);
+    const rightMonth = addMonths(view.leftMonth, 1);
 
     /*
      * Which single day carries the tab stop.
@@ -144,39 +161,28 @@ export function RangeCalendar(props: IRangeCalendarProps): React.ReactElement {
         const month = date.getFullYear() * 12 + date.getMonth();
 
         return (
-            month === leftMonth.getFullYear() * 12 + leftMonth.getMonth()
+            month === view.leftMonth.getFullYear() * 12 + view.leftMonth.getMonth()
             || month === rightMonth.getFullYear() * 12 + rightMonth.getMonth()
         );
     };
 
-    const tabDay = inWindow(focusDay) ? focusDay : leftMonth;
+    const tabDay = inWindow(view.focusDay) ? view.focusDay : view.leftMonth;
 
     /*
      * What the grid paints: the committed pair normally, and while a selection
      * is in progress the anchor against whatever the pointer or the keyboard is
-     * currently over. That preview is the whole reason a range picker reads as
-     * one gesture rather than as two separate dates.
+     * currently on. That preview is the whole reason a range picker reads as
+     * one gesture rather than as two separate dates — and why it must not
+     * appear before the user has pointed anywhere.
      */
-    const previewEnd = anchored ? (hovered ?? focusDay) : props.end;
-    const paintedStart = anchored ? props.anchor : props.start;
-    const paintedEnd = anchored ? previewEnd : props.end;
+    const painted = rangeToPaint(view, props.anchor, props.start, props.end);
 
     const selectable = (date: Date): boolean =>
         !props.disabled && withinBounds(date, props.min, props.max);
 
     const move = (next: Date): void => {
         wantsFocus.current = true;
-        setFocusDay(next);
-
-        // Follow the focus into a month that is not on screen. The right-hand
-        // month is on screen too, so only stepping off either end pages.
-        const monthNumber = (date: Date): number => date.getFullYear() * 12 + date.getMonth();
-
-        if (monthNumber(next) < monthNumber(leftMonth)) {
-            setLeftMonth(startOfMonth(next));
-        } else if (monthNumber(next) > monthNumber(rightMonth)) {
-            setLeftMonth(startOfMonth(addMonths(next, -1)));
-        }
+        setView((current) => moveFocus(current, next));
     };
 
     const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
@@ -188,21 +194,21 @@ export function RangeCalendar(props: IRangeCalendarProps): React.ReactElement {
         let next: Date | null = null;
 
         if (event.key === back) {
-            next = addDays(focusDay, -1);
+            next = addDays(view.focusDay, -1);
         } else if (event.key === forward) {
-            next = addDays(focusDay, 1);
+            next = addDays(view.focusDay, 1);
         } else if (event.key === 'ArrowUp') {
-            next = addDays(focusDay, -7);
+            next = addDays(view.focusDay, -7);
         } else if (event.key === 'ArrowDown') {
-            next = addDays(focusDay, 7);
+            next = addDays(view.focusDay, 7);
         } else if (event.key === 'Home') {
-            next = startOfWeek(focusDay, props.locale);
+            next = startOfWeek(view.focusDay, props.locale);
         } else if (event.key === 'End') {
-            next = addDays(startOfWeek(focusDay, props.locale), 6);
+            next = addDays(startOfWeek(view.focusDay, props.locale), 6);
         } else if (event.key === 'PageUp') {
-            next = addMonths(focusDay, event.shiftKey ? -12 : -1);
+            next = addMonths(view.focusDay, event.shiftKey ? -12 : -1);
         } else if (event.key === 'PageDown') {
-            next = addMonths(focusDay, event.shiftKey ? 12 : 1);
+            next = addMonths(view.focusDay, event.shiftKey ? 12 : 1);
         } else {
             return;
         }
@@ -213,13 +219,13 @@ export function RangeCalendar(props: IRangeCalendarProps): React.ReactElement {
         move(next);
     };
 
+    /*
+     * Focus is not stolen here: the user pressed a button and should stay on
+     * it. `pageWindow` is what decides the rest, and what it deliberately does
+     * *not* move is the pointer — see its comment.
+     */
     const page = (months: number): void => {
-        setLeftMonth(addMonths(leftMonth, months));
-
-        // The focused day travels with the window rather than being left
-        // behind in a month nobody can see. Focus is not stolen: the user
-        // pressed a button and should stay on it.
-        setFocusDay(addMonths(focusDay, months));
+        setView((current) => pageWindow(current, months));
     };
 
     const renderMonth = (month: Date): React.ReactElement => {
@@ -291,7 +297,7 @@ export function RangeCalendar(props: IRangeCalendarProps): React.ReactElement {
             );
         }
 
-        const position = positionInRange(date, paintedStart, paintedEnd);
+        const position = positionInRange(date, painted.start, painted.end);
         const enabled = selectable(date);
 
         const classes = ['DateRangePicker-day'];
@@ -321,9 +327,14 @@ export function RangeCalendar(props: IRangeCalendarProps): React.ReactElement {
                     aria-selected={position !== 'none'}
                     aria-label={props.formatDayLabel(date)}
                     tabIndex={isSameDay(date, tabDay) ? 0 : -1}
-                    onFocus={(): void => setFocusDay(date)}
-                    onMouseEnter={(): void => setHovered(date)}
-                    onMouseLeave={(): void => setHovered(null)}
+                    // Focus alone moves the tab stop and nothing else. Tabbing
+                    // into the grid is not pointing at a day, and a preview
+                    // that appeared on focus would draw a range the user never
+                    // asked for — which is the bug the pointer/focus split
+                    // exists to prevent.
+                    onFocus={(): void => setView((current) => ({ ...current, focusDay: date }))}
+                    onMouseEnter={(): void => setView((current) => pointAt(current, date))}
+                    onMouseLeave={(): void => setView((current) => pointAt(current, null))}
                     onClick={(): void => props.onPick(date)}
                 >
                     {date.getDate()}
@@ -356,7 +367,7 @@ export function RangeCalendar(props: IRangeCalendarProps): React.ReactElement {
             </div>
 
             <div className="DateRangePicker-months">
-                {renderMonth(leftMonth)}
+                {renderMonth(view.leftMonth)}
                 {renderMonth(rightMonth)}
             </div>
         </div>

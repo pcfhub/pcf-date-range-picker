@@ -201,6 +201,107 @@ export function positionInRange(
 }
 
 /**
+ * Where the two-month window sits, and what the user is on inside it.
+ *
+ * Three fields a component would naturally hold as three separate states, kept
+ * together because the bug they had was a *relationship* between two of them.
+ * The month arrows moved the focused day so that the arrow keys would carry on
+ * from a month still on screen — correct, and necessary — and the preview was
+ * painted from that same focused day. Paging away from a half-made selection
+ * therefore drew a range from the anchor to the same day-of-month in every
+ * month paged through, with nobody having chosen an end date.
+ *
+ * As one value with the transitions below, `pointed` is simply **absent from
+ * the paging step**, which is the difference between fixing the bug and
+ * suppressing the symptom.
+ */
+export interface CalendarView {
+    /** The month drawn on the left; the right-hand one is the month after it. */
+    leftMonth: Date;
+    /** The day the arrow keys are on, and the grid's single tab stop. */
+    focusDay: Date;
+    /**
+     * The day the pointer is over, or that the keyboard was last deliberately
+     * moved to — and `null` when it is neither, which is the state a freshly
+     * anchored calendar is in and the one that must paint no range.
+     */
+    pointed: Date | null;
+}
+
+/** A month as one comparable number, so "is it on screen" is arithmetic. */
+function monthNumber(date: Date): number {
+    return date.getFullYear() * 12 + date.getMonth();
+}
+
+/**
+ * Page the window by whole months.
+ *
+ * The focused day travels with it. Without that, a user who paged to December
+ * and then pressed an arrow key would continue from wherever the focus was left
+ * behind — and the window would snap back to that month, which reads as the
+ * arrows being broken.
+ *
+ * `pointed` does not travel, and that is the point: the user moved the window,
+ * not the pointer.
+ */
+export function pageWindow(view: CalendarView, months: number): CalendarView {
+    return {
+        leftMonth: addMonths(view.leftMonth, months),
+        focusDay: addMonths(view.focusDay, months),
+        pointed: view.pointed,
+    };
+}
+
+/**
+ * Move to a day, bringing the window with it when that day is off screen.
+ *
+ * This is the deliberate kind of movement — an arrow key, Home, PageDown — so
+ * unlike paging it *is* what the preview follows.
+ */
+export function moveFocus(view: CalendarView, next: Date): CalendarView {
+    const left = monthNumber(view.leftMonth);
+    const target = monthNumber(next);
+
+    let leftMonth = view.leftMonth;
+
+    if (target < left) {
+        leftMonth = startOfMonth(next);
+    } else if (target > left + 1) {
+        // The right-hand month is on screen too, so only stepping off the far
+        // end of *it* pages; landing there leaves the window where it is.
+        leftMonth = startOfMonth(addMonths(next, -1));
+    }
+
+    return { leftMonth, focusDay: next, pointed: next };
+}
+
+/** Point at a day, or stop pointing at one. Nothing else moves. */
+export function pointAt(view: CalendarView, date: Date | null): CalendarView {
+    return { ...view, pointed: date };
+}
+
+/**
+ * The pair the grid paints.
+ *
+ * The committed range normally; while a selection is in progress, the anchor
+ * against whatever the user is pointing at. **When they are pointing at
+ * nothing, the anchor alone** — that last clause is the whole of the fix. The
+ * fallback used to be the focused day, which the month arrows move.
+ */
+export function rangeToPaint(
+    view: CalendarView,
+    anchor: Date | null,
+    start: Date | null,
+    end: Date | null,
+): { start: Date | null; end: Date | null } {
+    if (anchor === null) {
+        return { start, end };
+    }
+
+    return { start: anchor, end: view.pointed ?? anchor };
+}
+
+/**
  * The quick ranges, in the order they are offered.
  *
  * Past- and future-facing tokens both, because the same control records a

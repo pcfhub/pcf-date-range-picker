@@ -430,6 +430,63 @@ focus are all out of reach. The click-order swap is the notable one: the *shape*
 it depends on is asserted (a backwards pair still paints between its ends,
 because `positionInRange` normalises), but the swap itself needs a click.
 
+## 0.2.6 — paging painted a range nobody had picked
+
+Reported with three screenshots: pick 7 September as the start, press the
+month arrow twice, and October and then November each show days 1–6 banded with
+a solid cap on the 7th — a range across months the user never touched. Click an
+end date and the committed range is correct, so the value was never wrong. Only
+the picture was, and only while half a selection was in progress.
+
+**Two correct decisions, one wrong relationship.** The month arrows moved the
+focused day with the window, which is right — a keyboard user who pages to
+December and then presses an arrow key must continue in December, not be thrown
+back to wherever the focus was left. And the preview painted from the focused
+day, which is also right: that is what makes arrowing around show the range it
+would select. Together they meant the *window* was driving the preview.
+
+The tell is in the numbers rather than in the pixels. Paging twice from
+7 September painted through to the 7th of each month, because paging added a
+month to the focused day and left the day-of-month alone.
+
+The fix splits the two ideas apart. `calendar.ts` now holds a `CalendarView` —
+the window, the focused day, and **`pointed`**, the day the pointer is over or
+the keyboard was last deliberately moved to — with four transitions on it:
+`pageWindow`, `moveFocus`, `pointAt` and `rangeToPaint`. `pointed` is null
+until the user points somewhere, and the preview falls back to the anchor alone
+rather than to the focus. That is not a smaller version of the same guard: with
+the moves written as functions on one value, **`pointed` is simply absent from
+the paging step**, so the bug has no way to be expressed.
+
+Focus stopped previewing too, and deliberately: tabbing into the grid moves the
+tab stop and paints nothing. Only the pointer and the arrow keys are pointing.
+
+### Reproducing it, since the suite cannot
+
+`npm run build && npm run harness`, then in the console on
+`dev/harness.html?bare=1&open=1&start=&end=`:
+
+```js
+const marks = () => [...document.querySelectorAll('[data-position]')]
+    .filter((b) => b.dataset.position !== 'none')
+    .map((b) => `${b.dataset.day}:${b.dataset.position}`);
+
+document.querySelector('[data-day="2026-09-07"]').click();
+[...document.querySelectorAll('.DateRangePicker-nav-button')].pop().click();
+setTimeout(() => console.log(marks()), 100);
+```
+
+`[]` is the fix. Before it, seven entries — `2026-10-01:between` through
+`2026-10-07:end`. The same script with an arrow key instead of the nav button
+must print two entries, or the keyboard preview has been broken in the process.
+
+**This is the second bug in this control that only a page could show**, after
+the popover clipped in a short frame, and both were found by looking rather
+than by asserting. The suite drives the built bundle through
+`react-dom/server`, which runs a component once and never updates it — so every
+transition above is unreachable from `npm run smoke` by construction, not by
+omission.
+
 ## Still open
 
 Everything here is **Not verified** in the strict sense: read-correct against
@@ -445,7 +502,11 @@ reach.
   can reach it, and the attempt failed for an environment reason rather than a
   control one: `document.hasFocus()` was false in the automated browser, so
   `.focus()` moved nothing. What *was* confirmed there is that the grid carries
-  exactly one tab stop and that paging with the month arrows carries it along.
+  exactly one tab stop, that paging with the month arrows carries it along, and
+  — from 0.2.6 — that an arrow key after paging continues in the month on
+  screen and previews from it, while paging alone previews nothing. Those were
+  driven by dispatching `keydown` at the grid rather than by a real key press,
+  so the handler is observed and the browser's own focus is still not.
 - **The focus trap and Escape are unobserved.** Both are Fluent's, and
   `dev/fluent-stub.js` has neither, so only `npm start` or a real form shows
   them.

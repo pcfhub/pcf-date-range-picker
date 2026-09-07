@@ -1,6 +1,6 @@
 {
   "name": "pcf-date-range-picker",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "A start and end date pair with range validation.",
   "license": "MIT",
   "private": true,
