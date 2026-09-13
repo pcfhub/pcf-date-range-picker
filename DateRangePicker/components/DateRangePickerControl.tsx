@@ -12,9 +12,13 @@ import {
     dayNumber,
     daysBetween,
     fromInputValue,
+    fromTimeInputValue,
     isSameDay,
+    timeOf,
     toInputValue,
+    toTimeInputValue,
     validateRange,
+    withTime,
 } from '../range';
 import { CalendarLocale, PresetToken } from '../calendar';
 import { PresetRail } from './PresetRail';
@@ -23,6 +27,13 @@ import { RangeCalendar } from './RangeCalendar';
 export interface IProps {
     startDate: Date | null;
     endDate: Date | null;
+    /**
+     * Whether each column carries a time, decided per column in index.ts. A
+     * value here is a wall-clock Date either way; this only says whether the
+     * clock part means anything.
+     */
+    startHasTime: boolean;
+    endHasTime: boolean;
     rules: RangeRules;
     visible: boolean;
     startReadable: boolean;
@@ -43,6 +54,8 @@ export interface IProps {
     formatDate: (date: Date) => string;
     formatDayLabel: (date: Date) => string;
     formatMonth: (date: Date) => string;
+    /** A wall-clock time in the organisation's short time pattern. */
+    formatTime: (date: Date) => string;
     onChange: (start: Date | null, end: Date | null) => void;
 }
 
@@ -89,6 +102,8 @@ export function DateRangePickerControl(props: IProps): React.ReactElement | null
      * open.
      */
     const [fieldEl, setFieldEl] = React.useState<HTMLButtonElement | null>(null);
+
+    const months = useMonths();
 
     // Resync on the *instant*, not on the object: every `updateView` hands down
     // a fresh Date, so depending on identity would reset local state on every
@@ -179,6 +194,16 @@ export function DateRangePickerControl(props: IProps): React.ReactElement | null
         props.onChange(nextStart, nextEnd);
     };
 
+    /*
+     * A day picked from the grid, from a preset or typed into the date box
+     * keeps whatever time that end already had. The calendar deals in days;
+     * the time is the time box's, and a new day is not a reason to reset it
+     * to midnight. A whole-day column has no time to keep, and gets midnight
+     * — which is what `timeOf` a local-midnight day returns anyway.
+     */
+    const keepingTime = (day: Date, previous: Date | null, hasTime: boolean): Date =>
+        withTime(day, hasTime && previous !== null ? timeOf(previous) : null);
+
     const pickDay = (date: Date): void => {
         if (anchor === null) {
             setAnchor(date);
@@ -194,7 +219,7 @@ export function DateRangePickerControl(props: IProps): React.ReactElement | null
             dayNumber(anchor) <= dayNumber(date) ? [anchor, date] : [date, anchor];
 
         setAnchor(null);
-        commit(from, to);
+        commit(keepingTime(from, start, props.startHasTime), keepingTime(to, end, props.endHasTime));
     };
 
     const typed = (which: 'start' | 'end') => (
@@ -203,25 +228,95 @@ export function DateRangePickerControl(props: IProps): React.ReactElement | null
         const parsed = fromInputValue(event.target.value);
 
         setAnchor(null);
-        commit(which === 'start' ? parsed : start, which === 'end' ? parsed : end);
+
+        if (which === 'start') {
+            commit(parsed === null ? null : keepingTime(parsed, start, props.startHasTime), end);
+        } else {
+            commit(start, parsed === null ? null : keepingTime(parsed, end, props.endHasTime));
+        }
     };
 
-    const half = (date: Date | null, readable: boolean): string => {
+    /*
+     * A time typed into the box goes onto the day that end already has. The
+     * box is disabled while there is no day, so a time without a date — which
+     * is not a value — cannot be entered. An unparseable value (the browser
+     * clears the box while the user is mid-edit) leaves the value alone.
+     */
+    const typedTime = (which: 'start' | 'end') => (
+        event: React.ChangeEvent<HTMLInputElement>,
+    ): void => {
+        const time = fromTimeInputValue(event.target.value);
+        const current = which === 'start' ? start : end;
+
+        if (time === null || current === null) {
+            return;
+        }
+
+        setAnchor(null);
+        const next = withTime(current, time);
+        commit(which === 'start' ? next : start, which === 'end' ? next : end);
+    };
+
+    const half = (date: Date | null, readable: boolean, hasTime: boolean): string => {
         if (!readable) {
             return text('Restricted');
         }
 
-        return date === null ? '—' : props.formatDate(date);
+        if (date === null) {
+            return '—';
+        }
+
+        return hasTime ? `${props.formatDate(date)} ${props.formatTime(date)}` : props.formatDate(date);
     };
 
     const triggerText =
         start === null && end === null && !restricted
             ? text('Placeholder')
-            : `${half(start, props.startReadable)} – ${half(end, props.endReadable)}`;
+            : `${half(start, props.startReadable, props.startHasTime)} – ${half(end, props.endReadable, props.endHasTime)}`;
+
+    const anyTime = props.startHasTime || props.endHasTime;
+
+    /*
+     * With a time on either end the duration is elapsed time rather than a
+     * count of calendar days — "2 days 3 h 15 min" — built from the difference
+     * of the two wall clocks and shown to the minute, which is what the boxes
+     * offer. A whole-day end sits at midnight, so a day-only start with a timed
+     * end reads as the hours since that midnight, which is what it is.
+     */
+    const elapsedText = (from: Date, to: Date): string => {
+        const minutes = Math.max(0, Math.floor((to.getTime() - from.getTime()) / 60_000));
+        const days = Math.floor(minutes / 1440);
+        const hours = Math.floor((minutes % 1440) / 60);
+        const rest = minutes % 60;
+        const parts: string[] = [];
+
+        if (days === 1) {
+            parts.push(text('ElapsedDay'));
+        } else if (days > 1) {
+            parts.push(text('ElapsedDays').replace('{0}', String(days)));
+        }
+
+        if (hours > 0) {
+            parts.push(text('ElapsedHours').replace('{0}', String(hours)));
+        }
+
+        if (rest > 0 || parts.length === 0) {
+            parts.push(text('ElapsedMinutes').replace('{0}', String(rest)));
+        }
+
+        return parts.join(' ');
+    };
 
     const durationText = (): string | null => {
         if (!props.showDuration || start === null || end === null || problem !== null) {
             return null;
+        }
+
+        if (anyTime) {
+            return text('DurationTimed')
+                .replace('{0}', elapsedText(start, end))
+                .replace('{1}', half(start, true, props.startHasTime))
+                .replace('{2}', half(end, true, props.endHasTime));
         }
 
         if (isSameDay(start, end)) {
@@ -270,7 +365,7 @@ export function DateRangePickerControl(props: IProps): React.ReactElement | null
             >
                 {triggerText}
             </span>
-            <CalendarIcon />
+            <CalendarIcon title={text('Placeholder')} />
         </button>
     );
 
@@ -319,7 +414,10 @@ export function DateRangePickerControl(props: IProps): React.ReactElement | null
                             text={text}
                             onPick={(from, to): void => {
                                 setAnchor(null);
-                                commit(from, to);
+                                commit(
+                                    keepingTime(from, start, props.startHasTime),
+                                    keepingTime(to, end, props.endHasTime),
+                                );
                             }}
                         />
 
@@ -333,6 +431,7 @@ export function DateRangePickerControl(props: IProps): React.ReactElement | null
                             today={props.today}
                             isRTL={props.isRTL}
                             disabled={!editable}
+                            months={months}
                             text={text}
                             formatDayLabel={props.formatDayLabel}
                             formatMonth={props.formatMonth}
@@ -342,28 +441,69 @@ export function DateRangePickerControl(props: IProps): React.ReactElement | null
 
                     <div className="DateRangePicker-footer">
                         <div className="DateRangePicker-typed">
-                            <label className="DateRangePicker-typed-field">
-                                <span>{text('StartLabel')}</span>
-                                <input
-                                    className="DateRangePicker-input"
-                                    type="date"
-                                    value={start === null ? '' : toInputValue(start)}
-                                    disabled={!editable}
-                                    {...bounds}
-                                    onChange={typed('start')}
-                                />
-                            </label>
-                            <label className="DateRangePicker-typed-field">
-                                <span>{text('EndLabel')}</span>
-                                <input
-                                    className="DateRangePicker-input"
-                                    type="date"
-                                    value={end === null ? '' : toInputValue(end)}
-                                    disabled={!editable}
-                                    {...bounds}
-                                    onChange={typed('end')}
-                                />
-                            </label>
+                            {/*
+                             * Each date box and its time box are one group, so
+                             * a narrow footer wraps the pair as a unit rather
+                             * than orphaning an End time on a row of its own.
+                             */}
+                            <div className="DateRangePicker-typed-pair">
+                                <label className="DateRangePicker-typed-field">
+                                    <span>{text('StartLabel')}</span>
+                                    <input
+                                        className="DateRangePicker-input"
+                                        type="date"
+                                        value={start === null ? '' : toInputValue(start)}
+                                        disabled={!editable}
+                                        {...bounds}
+                                        onChange={typed('start')}
+                                    />
+                                </label>
+                                {/*
+                                 * The time box is the browser's for the reason the
+                                 * date box is: its value is `HH:mm` whatever the
+                                 * display locale, so there is one format at one
+                                 * boundary. Minutes, not seconds — the column
+                                 * keeps seconds and the value does, but the form's
+                                 * own field shows minutes, and so does this.
+                                 */}
+                                {props.startHasTime && (
+                                    <label className="DateRangePicker-typed-field is-time">
+                                        <span>{text('StartTimeLabel')}</span>
+                                        <input
+                                            className="DateRangePicker-input"
+                                            type="time"
+                                            value={start === null ? '' : toTimeInputValue(start)}
+                                            disabled={!editable || start === null}
+                                            onChange={typedTime('start')}
+                                        />
+                                    </label>
+                                )}
+                            </div>
+                            <div className="DateRangePicker-typed-pair">
+                                <label className="DateRangePicker-typed-field">
+                                    <span>{text('EndLabel')}</span>
+                                    <input
+                                        className="DateRangePicker-input"
+                                        type="date"
+                                        value={end === null ? '' : toInputValue(end)}
+                                        disabled={!editable}
+                                        {...bounds}
+                                        onChange={typed('end')}
+                                    />
+                                </label>
+                                {props.endHasTime && (
+                                    <label className="DateRangePicker-typed-field is-time">
+                                        <span>{text('EndTimeLabel')}</span>
+                                        <input
+                                            className="DateRangePicker-input"
+                                            type="time"
+                                            value={end === null ? '' : toTimeInputValue(end)}
+                                            disabled={!editable || end === null}
+                                            onChange={typedTime('end')}
+                                        />
+                                    </label>
+                                )}
+                            </div>
                         </div>
 
                         <div className="DateRangePicker-actions">
@@ -422,6 +562,49 @@ export function DateRangePickerControl(props: IProps): React.ReactElement | null
 }
 
 /**
+ * The viewport is narrower than two months side by side.
+ *
+ * 36rem is where the popover's two 7-column grids, their gap and the surface
+ * padding stop fitting: two months are about 464px, and below roughly 576px
+ * the second one wraps under the first, doubling the popover's height and
+ * pushing the footer — Done and Clear — off the bottom of a phone. Measured
+ * on a real form at a viewport just under 500px, which is also why the
+ * earlier 30rem breakpoint in the stylesheet never fired there.
+ *
+ * The viewport rather than the popover's own width, because the surface takes
+ * its width from its content: measuring it would find whatever the content
+ * had already decided. `matchMedia` is absent from the smoke rig's DOM, and a
+ * host without it gets the two-month calendar.
+ */
+const NARROW = '(max-width: 36rem)';
+
+function useMonths(): 1 | 2 {
+    const query = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+        ? window.matchMedia(NARROW)
+        : null;
+
+    const [narrow, setNarrow] = React.useState<boolean>(query?.matches ?? false);
+
+    React.useEffect(() => {
+        if (query === null) {
+            return undefined;
+        }
+
+        const onChange = (event: MediaQueryListEvent): void => setNarrow(event.matches);
+
+        setNarrow(query.matches);
+        query.addEventListener('change', onChange);
+
+        return (): void => query.removeEventListener('change', onChange);
+        // The query object is recreated per render; its media string is what
+        // identifies it, and that never changes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [NARROW]);
+
+    return narrow ? 1 : 2;
+}
+
+/**
  * Fluent's `CalendarLtr16Regular` path data, inlined rather than imported:
  * `@fluentui/react-icons` is not a platform library, so reaching one path
  * through it would put the whole icon set's module graph in front of the
@@ -429,7 +612,7 @@ export function DateRangePickerControl(props: IProps): React.ReactElement | null
  * rather than scaling it, and a 20px glyph shown at 16 has strokes a fifth too
  * thin, which reads as "slightly wrong" without ever being identifiable.
  */
-function CalendarIcon(): React.ReactElement {
+function CalendarIcon(props: { title: string }): React.ReactElement {
     return (
         <svg
             className="DateRangePicker-icon"
@@ -437,6 +620,14 @@ function CalendarIcon(): React.ReactElement {
             aria-hidden="true"
             focusable="false"
         >
+            {/*
+             * The native fields show a tooltip on their glyph; an SVG title is
+             * the browser's own tooltip for exactly this element, and nothing
+             * else on the button gets one. aria-hidden stays: the button's
+             * aria-label is the accessible name, and a second one would be
+             * read twice.
+             */}
+            <title>{props.title}</title>
             <path d="M11.5 2A2.5 2.5 0 0 1 14 4.5v7a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 2 11.5v-7A2.5 2.5 0 0 1 4.5 2h7Zm1.5 4H3v5.5A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5V6Zm-1.5-3h-7A1.5 1.5 0 0 0 3 4.5V5h10v-.5A1.5 1.5 0 0 0 11.5 3Z" />
         </svg>
     );

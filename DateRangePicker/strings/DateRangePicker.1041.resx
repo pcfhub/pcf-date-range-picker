@@ -215,4 +215,40 @@
   <data name="DateRangePicker_Preset_nextMonth" xml:space="preserve">
     <value>翌月</value>
   </data>
+  <data name="time_Name" xml:space="preserve">
+    <value>時刻</value>
+  </data>
+  <data name="time_Desc" xml:space="preserve">
+    <value>各日付の横に時刻を表示するかどうか。「自動」はバインドされた列に従います。日付と時刻の列には時刻が表示され、日付のみの列には表示されません。キャンバス アプリには列がないため「自動」は時刻なしを意味します。時刻を有効にするには「表示する」を選択してください。「非表示」は日付と時刻の列でも日単位に限定します。</value>
+  </data>
+  <data name="time_Auto" xml:space="preserve">
+    <value>自動</value>
+  </data>
+  <data name="time_Show" xml:space="preserve">
+    <value>表示する</value>
+  </data>
+  <data name="time_Hide" xml:space="preserve">
+    <value>非表示</value>
+  </data>
+  <data name="DateRangePicker_StartTimeLabel" xml:space="preserve">
+    <value>開始時刻</value>
+  </data>
+  <data name="DateRangePicker_EndTimeLabel" xml:space="preserve">
+    <value>終了時刻</value>
+  </data>
+  <data name="DateRangePicker_DurationTimed" xml:space="preserve">
+    <value>{0} ({1} 〜 {2})</value>
+  </data>
+  <data name="DateRangePicker_ElapsedDays" xml:space="preserve">
+    <value>{0} 日</value>
+  </data>
+  <data name="DateRangePicker_ElapsedDay" xml:space="preserve">
+    <value>1 日</value>
+  </data>
+  <data name="DateRangePicker_ElapsedHours" xml:space="preserve">
+    <value>{0} 時間</value>
+  </data>
+  <data name="DateRangePicker_ElapsedMinutes" xml:space="preserve">
+    <value>{0} 分</value>
+  </data>
 </root>

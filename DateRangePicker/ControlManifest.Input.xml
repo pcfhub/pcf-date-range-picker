@@ -7,7 +7,7 @@
   -->
   <control namespace="PCFHub"
            constructor="DateRangePicker"
-           version="0.2.6"
+           version="0.3.0"
            display-name-key="DateRangePicker_Name"
            description-key="DateRangePicker_Desc"
            control-type="virtual">
@@ -34,18 +34,38 @@
 
       startDate is declared first because that is the column the control
       attaches to.
+
+      Both are type-grouped from 0.3.0 rather than fixed to DateOnly, so the
+      control can also be placed on a Date and Time column. It does NOT cost
+      what pcf-choices-picker's group cost: refreshTypes still emits
+      DateTimeProperty for both, because every member of this group is in the
+      DateAndTime family. The base-`Property` fallback — `raw: any`,
+      `attributes: Metadata` — is what a group across families gets.
+
+      Measured on a live form on 2026-09-12 (the 0.2.7 probe build): a
+      control already bound to two Date Only columns stays bound through the
+      upgrade; the control is offered on a Date and Time column and the End
+      picker offers Date and Time columns; `property.type` reports the member
+      the column resolved to, and `attributes.Format` is 'date' or 'datetime'.
+      Whether the End picker also offers a Date Only column beside a Date and
+      Time start is still unobserved — the control handles the pair either way.
     -->
+    <type-group name="dateColumn">
+      <type>DateAndTime.DateOnly</type>
+      <type>DateAndTime.DateAndTime</type>
+    </type-group>
+
     <property name="startDate"
               display-name-key="startDate_Name"
               description-key="startDate_Desc"
-              of-type="DateAndTime.DateOnly"
+              of-type-group="dateColumn"
               usage="bound"
               required="true" />
 
     <property name="endDate"
               display-name-key="endDate_Name"
               description-key="endDate_Desc"
-              of-type="DateAndTime.DateOnly"
+              of-type-group="dateColumn"
               usage="bound"
               required="true" />
 
@@ -104,6 +124,31 @@
               default-value="show">
       <value name="show" display-name-key="duration_Show">show</value>
       <value name="hide" display-name-key="duration_Hide">hide</value>
+    </property>
+
+    <!--
+      Whether the picker offers a time beside each date.
+
+      `auto` follows the bound column: a Date and Time column gets a time box,
+      a Date Only column does not — read off `attributes.Format`, which a
+      model-driven form supplies and canvas does not. On canvas there is no
+      column, so `auto` means no times and a maker who wants them says `show`.
+      `hide` keeps a Date and Time column to whole days, written at midday.
+
+      An Enum rather than a TwoOptions for the reason the two above are: only
+      an Enum can carry a real "the maker never touched this" default, and
+      "follow the column" is exactly that state.
+    -->
+    <property name="time"
+              display-name-key="time_Name"
+              description-key="time_Desc"
+              of-type="Enum"
+              usage="input"
+              required="false"
+              default-value="auto">
+      <value name="auto" display-name-key="time_Auto">auto</value>
+      <value name="show" display-name-key="time_Show">show</value>
+      <value name="hide" display-name-key="time_Hide">hide</value>
     </property>
 
     <!--

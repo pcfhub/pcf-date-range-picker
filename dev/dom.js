@@ -393,6 +393,26 @@ function install(global) {
     define('self', global);
     define('navigator', { userAgent: 'dev/dom.js', language: 'en-US' });
 
+    /*
+     * A viewport with one switch. The control asks `matchMedia` whether the
+     * screen is too narrow for two months; `global.__viewport.narrow` is the
+     * answer, and it defaults to the desktop so every existing assertion sees
+     * the two-month calendar it was written against. Listeners are accepted
+     * and never fired — a resize mid-test is not something this rig models.
+     */
+    global.__viewport = { narrow: false };
+
+    define('matchMedia', function (query) {
+        return {
+            media: query,
+            get matches() {
+                return global.__viewport.narrow;
+            },
+            addEventListener: function () {},
+            removeEventListener: function () {},
+        };
+    });
+
     function define(name, value) {
         if (global[name] !== undefined) {
             return;

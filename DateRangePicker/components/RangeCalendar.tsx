@@ -29,6 +29,12 @@ export interface IRangeCalendarProps {
     today: Date;
     isRTL: boolean;
     disabled: boolean;
+    /**
+     * How many months are on screen. Two is the calendar; one is what a phone
+     * gets, where two stacked months push the footer off the bottom of the
+     * page. Decided by the component above from the viewport, not here.
+     */
+    months: 1 | 2;
     text: (key: string) => string;
     formatDayLabel: (date: Date) => string;
     formatMonth: (date: Date) => string;
@@ -162,7 +168,7 @@ export function RangeCalendar(props: IRangeCalendarProps): React.ReactElement {
 
         return (
             month === view.leftMonth.getFullYear() * 12 + view.leftMonth.getMonth()
-            || month === rightMonth.getFullYear() * 12 + rightMonth.getMonth()
+            || (props.months === 2 && month === rightMonth.getFullYear() * 12 + rightMonth.getMonth())
         );
     };
 
@@ -182,7 +188,7 @@ export function RangeCalendar(props: IRangeCalendarProps): React.ReactElement {
 
     const move = (next: Date): void => {
         wantsFocus.current = true;
-        setView((current) => moveFocus(current, next));
+        setView((current) => moveFocus(current, next, props.months));
     };
 
     const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
@@ -368,7 +374,7 @@ export function RangeCalendar(props: IRangeCalendarProps): React.ReactElement {
 
             <div className="DateRangePicker-months">
                 {renderMonth(view.leftMonth)}
-                {renderMonth(rightMonth)}
+                {props.months === 2 && renderMonth(rightMonth)}
             </div>
         </div>
     );

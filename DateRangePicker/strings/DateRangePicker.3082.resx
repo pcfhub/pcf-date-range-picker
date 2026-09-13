@@ -215,4 +215,40 @@
   <data name="DateRangePicker_Preset_nextMonth" xml:space="preserve">
     <value>Mes próximo</value>
   </data>
+  <data name="time_Name" xml:space="preserve">
+    <value>Hora</value>
+  </data>
+  <data name="time_Desc" xml:space="preserve">
+    <value>Si el selector ofrece una hora junto a cada fecha. «Automático» sigue la columna enlazada: una columna de fecha y hora recibe una hora, una columna de solo fecha no. En una aplicación de lienzo no hay columna, así que «Automático» significa sin horas — elija «Mostrar» para activarlas. «Ocultar» limita incluso una columna de fecha y hora a días completos.</value>
+  </data>
+  <data name="time_Auto" xml:space="preserve">
+    <value>Automático</value>
+  </data>
+  <data name="time_Show" xml:space="preserve">
+    <value>Mostrar</value>
+  </data>
+  <data name="time_Hide" xml:space="preserve">
+    <value>Ocultar</value>
+  </data>
+  <data name="DateRangePicker_StartTimeLabel" xml:space="preserve">
+    <value>Hora de inicio</value>
+  </data>
+  <data name="DateRangePicker_EndTimeLabel" xml:space="preserve">
+    <value>Hora de fin</value>
+  </data>
+  <data name="DateRangePicker_DurationTimed" xml:space="preserve">
+    <value>{0}, del {1} al {2}</value>
+  </data>
+  <data name="DateRangePicker_ElapsedDays" xml:space="preserve">
+    <value>{0} días</value>
+  </data>
+  <data name="DateRangePicker_ElapsedDay" xml:space="preserve">
+    <value>1 día</value>
+  </data>
+  <data name="DateRangePicker_ElapsedHours" xml:space="preserve">
+    <value>{0} h</value>
+  </data>
+  <data name="DateRangePicker_ElapsedMinutes" xml:space="preserve">
+    <value>{0} min</value>
+  </data>
 </root>

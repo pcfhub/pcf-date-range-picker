@@ -104,7 +104,7 @@ function disposeAll() {
 }
 
 function mount(options) {
-    const context = host.createContext({ ...options, getString: marked });
+    const context = host.createContext({ getString: marked, ...options });
     const instance = new registration.ctor();
 
     let notifications = 0;
@@ -125,7 +125,7 @@ function mount(options) {
         notifications: () => notifications,
         /** Re-render in a new state, as the platform does on every change. */
         update: (next) => {
-            element = instance.updateView(host.createContext({ ...options, ...next, getString: marked }));
+            element = instance.updateView(host.createContext({ getString: marked, ...options, ...next }));
 
             return element;
         },
@@ -577,6 +577,229 @@ check(
     `${repicked.notifications()} notifications`,
 );
 
+/* ------------------------------------------- the time on the user's wall */
+
+/*
+ * **The platform never reads the instant a control hands it.** Measured on
+ * 12 September 2026 against a User Local and a Time Zone Independent column
+ * on one record, from a UTC-6 browser whose Dataverse user was in UTC-5:
+ *
+ *     handed over     2026-09-18T14:30:45Z   local components 08:30:45
+ *     User Local      stored 13:30:45Z       08:30:45 in the *user's* zone
+ *     TZI             stored 08:30:45Z       08:30:45, verbatim
+ *
+ * So the local components are the wall clock, on both — and on read, User
+ * Local hands back the instant while TZI hands back the wall clock in the
+ * UTC components. `host.store` is that contract, and every fixture below
+ * goes through it: the suite seeds a wall clock, the host stores it the way
+ * the server did, and the control has to show the wall clock again.
+ *
+ * `userOffset: -300` throughout, which is not this machine's zone in any
+ * hemisphere the suite is likely to run in — a user in the browser's own zone
+ * would hide every conversion bug there is.
+ */
+const at = host.localDateTime;
+const USER = -300;
+
+const timed = (extra) =>
+    mount({
+        format: 'datetime',
+        behavior: 1,
+        userOffset: USER,
+        start: at(2026, 9, 18, 8, 30, 45),
+        end: at(2026, 9, 19, 3, 15, 0),
+        ...extra,
+    });
+
+const wall = (date) =>
+    `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()} ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
+
+check(
+    'a Date and Time column is recognised by its Format, not its type',
+    timed().props().startHasTime === true && timed().props().endHasTime === true
+        && mount({}).props().startHasTime === false,
+);
+
+check(
+    'and each column is judged on its own',
+    (() => {
+        const mixed = mount({ startFormat: 'date', endFormat: 'datetime' });
+
+        return mixed.props().startHasTime === false && mixed.props().endHasTime === true
+            && mixed.props().rules.byInstant === false && timed().props().rules.byInstant === true;
+    })(),
+);
+
+check(
+    'on canvas there is no column, so the time input decides',
+    mount({ behavior: undefined, time: 'show' }).props().startHasTime === true
+        && mount({ behavior: undefined, time: 'auto' }).props().startHasTime === false,
+);
+
+check(
+    'and hide keeps a Date and Time column to whole days',
+    timed({ time: 'hide' }).props().startHasTime === false,
+);
+
+/*
+ * User Local: the stored instant is 13:30:45Z, and the wall clock is that
+ * instant in the user's UTC-5 — not in the browser's zone, which on the form
+ * this was measured on was an hour away. A control reading local components
+ * shows 07:30 in a UTC-6 browser and 13:30 in CI; a control calling
+ * `getTimeZoneOffsetMinutes()` with no argument gets the standard offset and
+ * shows 07:30 everywhere.
+ */
+check(
+    "a User Local time is read on the user's clock, not the browser's",
+    wall(timed().props().startDate) === '2026-9-18 8:30:45',
+    wall(timed().props().startDate),
+);
+
+check(
+    'and a Time Zone Independent time is read out of the UTC components',
+    wall(timed({ behavior: 3 }).props().startDate) === '2026-9-18 8:30:45',
+    wall(timed({ behavior: 3 }).props().startDate),
+);
+
+check(
+    'seconds survive the read',
+    timed().props().startDate.getSeconds() === 45 && timed({ behavior: 3 }).props().startDate.getSeconds() === 45,
+);
+
+/*
+ * The write. What leaves the control is the wall clock as local components,
+ * verbatim — no midday, no offset — because the platform will read it by
+ * components and do its own conversion. Put through the host's measured
+ * write, it has to land on exactly what the real server held.
+ */
+const written = timed({ start: null, end: null });
+
+written.props().onChange(at(2026, 9, 18, 8, 30, 45), at(2026, 9, 19, 3, 15, 0));
+
+check(
+    'a time is handed over as its wall clock, not anchored at midday',
+    wall(written.outputs().startDate) === '2026-9-18 8:30:45',
+    wall(written.outputs().startDate),
+);
+
+check(
+    'and stored by a User Local column as the instant the real server held',
+    host.store(written.outputs().startDate, 1, 'datetime', () => USER).toISOString() === '2026-09-18T13:30:45.000Z',
+    host.store(written.outputs().startDate, 1, 'datetime', () => USER).toISOString(),
+);
+
+check(
+    'and by a Time Zone Independent column as the wall clock the real server held',
+    host.store(written.outputs().startDate, 3, 'datetime', () => USER).toISOString() === '2026-09-18T08:30:45.000Z',
+    host.store(written.outputs().startDate, 3, 'datetime', () => USER).toISOString(),
+);
+
+check(
+    'while a whole-day column keeps its midday write',
+    (() => {
+        const dayOnly = mount({ start: null, end: null });
+
+        dayOnly.props().onChange(day(2026, 9, 18), day(2026, 9, 21));
+
+        return dayOnly.outputs().startDate.getHours() === 12;
+    })(),
+);
+
+/*
+ * The change guard, to the second. A reload hands back 08:30:45 and the
+ * control must not call that an edit; a pick a minute away is one.
+ */
+const guarded = timed();
+
+guarded.props().onChange(at(2026, 9, 18, 8, 30, 45), at(2026, 9, 19, 3, 15, 0));
+
+check('handing back the same moment does not notify', guarded.notifications() === 0, String(guarded.notifications()));
+
+guarded.props().onChange(at(2026, 9, 18, 8, 31, 45), at(2026, 9, 19, 3, 15, 0));
+
+check('and a minute later does', guarded.notifications() === 1, String(guarded.notifications()));
+
+/*
+ * Same day, both timed: the order of the moments is a rule. One side a whole
+ * day: it is not, because there is no moment to compare against.
+ */
+const backwardsTimed = timed({ start: null, end: null });
+
+backwardsTimed.props().onChange(at(2026, 9, 18, 10, 0, 0), at(2026, 9, 18, 9, 0, 0));
+
+check('an end earlier the same day is refused when both carry a time', backwardsTimed.notifications() === 0);
+
+const mixedSameDay = mount({ startFormat: 'date', endFormat: 'datetime', behavior: 1, userOffset: USER, start: null, end: null });
+
+mixedSameDay.props().onChange(day(2026, 9, 18), at(2026, 9, 18, 9, 0, 0));
+
+check('but not when one side is a whole day', mixedSameDay.notifications() === 1, String(mixedSameDay.notifications()));
+
+/*
+ * What the user sees. The time is formatted by the control from the
+ * organisation's pattern — measured `h:mm tt` on a real tenant — because the
+ * platform's own time formatters were measured to disagree on whose clock to
+ * use and to print the date in front of the time.
+ */
+const timedMarkup = renderDeep(timed().element);
+
+check(
+    'the field shows the date and the time, in the organisation\'s pattern',
+    timedMarkup.includes('fmt:2026-09-18 08:30 – fmt:2026-09-19 03:15'),
+    (timedMarkup.match(/fmt:[^<]*/) || [''])[0],
+);
+
+check(
+    'and follows a twelve-hour pattern with its designators',
+    (() => {
+        const twelve = renderDeep(
+            timed({ dateFormatting: { ...host.DATE_FORMATTING, shortTimePattern: 'h:mm tt', amDesignator: 'a.m.', pmDesignator: 'p.m.' } }).element,
+        );
+
+        return twelve.includes('fmt:2026-09-18 8:30 a.m. – fmt:2026-09-19 3:15 a.m.');
+    })(),
+);
+
+check(
+    'a time box appears beside each timed date box, and only those',
+    count(timedMarkup, /type="time"/g) === 2
+        && count(renderDeep(mount({ startFormat: 'date', endFormat: 'datetime' }).element), /type="time"/g) === 1
+        && count(renderDeep(mount({}).element), /type="time"/g) === 0,
+    `${count(timedMarkup, /type="time"/g)} on a timed pair`,
+);
+
+check(
+    'and shows minutes, keeping the seconds the column holds',
+    /type="time" class="[^"]*" value="08:30"/.test(timedMarkup),
+);
+
+check(
+    'a time box with no date to sit on is disabled',
+    /type="time" class="[^"]*" value="" disabled=""/.test(renderDeep(timed({ start: null }).element)),
+);
+
+check(
+    'the duration is elapsed time, to the minute',
+    (() => {
+        // Real strings for this one: the marked getString would hide the
+        // arithmetic behind a key name.
+        const plain = renderDeep(timed({ getString: (key) => host.STRINGS[key] ?? key }).element);
+
+        return plain.includes('18 h 44 min, fmt:2026-09-18 08:30 to fmt:2026-09-19 03:15');
+    })(),
+);
+
+check(
+    'and a multi-day one counts its days first',
+    (() => {
+        const plain = renderDeep(
+            timed({ getString: (key) => host.STRINGS[key] ?? key, end: at(2026, 9, 20, 9, 30, 45) }).element,
+        );
+
+        return plain.includes('2 days 1 h, fmt:2026-09-18 08:30 to fmt:2026-09-20 09:30');
+    })(),
+);
+
 /* ------------------------------------------------------------ the rules */
 
 /*
@@ -769,6 +992,43 @@ check(
 );
 
 check('and the month heading comes from the platform too', markup.includes('ym:2026-03'));
+
+/*
+ * A phone gets one month. Two stacked months push the footer off the bottom
+ * of the screen, which a real form showed at a viewport just under 500px —
+ * so below 36rem the component renders the left month alone and the arrow
+ * keys page a one-month window. Desktop is unchanged: two headings.
+ */
+check(
+    'two months on a desktop viewport',
+    count(markup, /DateRangePicker-month-heading/g) === 2,
+    `${count(markup, /DateRangePicker-month-heading/g)} headings`,
+);
+
+check(
+    'and one on a phone',
+    (() => {
+        global.__viewport.narrow = true;
+
+        try {
+            return count(renderDeep(mount({}).element), /DateRangePicker-month-heading/g) === 1;
+        } finally {
+            global.__viewport.narrow = false;
+        }
+    })(),
+);
+
+/*
+ * The glyph in the field is a hover target of its own, the way the platform's
+ * lookup and date fields treat theirs: it carries the browser's tooltip (an SVG
+ * title), while the button keeps the accessible name — the svg stays
+ * aria-hidden so the name is not read twice. The brand hover colour is CSS and
+ * is checked in the harness, not here.
+ */
+check(
+    'the field glyph carries a tooltip and stays out of the accessible name',
+    /<svg class="DateRangePicker-icon"[^>]*aria-hidden="true"[^>]*><title>resx:DateRangePicker_Placeholder<\/title>/.test(markup),
+);
 
 /*
  * **The grid is one tab stop, and a date is drawn twice.**

@@ -6,10 +6,18 @@ order: 7
 
 # Limitations
 
-- **Whole days only.** The control binds **Date Only** columns and works in
-  calendar days. It does not offer times, and it will not appear on a Date and
-  Time column — a time component would be silently discarded, which is worse than
-  not supporting it.
+- **Times are to the minute, on the Dataverse user's clock.** From 0.3.0 the
+  control binds **Date and Time** columns as well as Date Only ones, and offers
+  a time box beside each date. The time shown and the time typed are both on
+  the clock of the *Dataverse user* — the timezone in their personal options,
+  which is what every other date on the form uses — and not the browser's,
+  which can differ by an hour or more. The box works in minutes; a column that
+  already holds seconds keeps them until the time is changed.
+
+- **A Time Zone Independent column holds a wall clock, and so does the box.**
+  Nothing is converted for that behaviour: 08:30 typed is 08:30 stored and
+  08:30 shown to every user, wherever they are. That is what the behaviour is
+  for, and the control does not second-guess it.
 
 - **The calendar is the control's own, not Fluent's and not the browser's.**
   Fluent's date picker lives in a package the Power Platform does not provide, so
@@ -48,14 +56,15 @@ order: 7
   calendar that can only commit one end. What the user *may* read is still shown:
   a denied column reads "Hidden" rather than blank.
 
-- **Both columns want the Date Only *behaviour*, not just the format.** Dataverse
-  lets each column be User Local, Date Only or Time Zone Independent, and this is
-  separate from the column's format — a column can read as Date Only in the maker
-  portal while behaving as **User Local**, which stores the value as UTC. On such a
-  column a whole day is kept as an instant, so it can come back as the day before
-  or after for anyone whose timezone differs from the one it was saved in. The
-  symptom is unmistakable once seen: a range saved as 6 Sep – 31 Oct reads back as
-  5 Sep – 30 Oct, both ends off by exactly one day.
+- **A Date Only column still wants the Date Only *behaviour*, not just the
+  format.** Dataverse lets each column be User Local, Date Only or Time Zone
+  Independent, and this is separate from the column's format — a column can
+  read as Date Only in the maker portal while behaving as **User Local**, which
+  stores the value as UTC. On such a column a whole day is kept as an instant,
+  so it can come back as the day before or after for anyone whose timezone
+  differs from the one it was saved in. The symptom is unmistakable once seen:
+  a range saved as 6 Sep – 31 Oct reads back as 5 Sep – 30 Oct, both ends off
+  by exactly one day.
 
   From 0.2.5 the control reads each column's **Behavior** and handles both: a
   Date Only column hands its value over at UTC midnight and the day is read from

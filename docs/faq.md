@@ -15,9 +15,10 @@ pair is configured.
 
 ## Why does the control not appear in the component list?
 
-The column type. Date Range Picker binds **Date Only** columns, and the form
-designer hides a component from every column it cannot bind to. A Date and Time
-column will not offer it.
+The column type. Date Range Picker binds **Date Only** and **Date and Time**
+columns, and the form designer hides a component from every column it cannot
+bind to. Any other type will not offer it. Versions before 0.3.0 bound Date
+Only columns alone.
 
 ## In a canvas app nothing happens when I pick a date. Is it locked?
 
@@ -92,7 +93,25 @@ The **From** and **To** fields inside the popover are still the browser's own
 
 ## Can I use it for a date and time range?
 
-Not currently. The control works in whole days. Open an issue if you need times.
+Yes, from 0.3.0. Place it on a **Date and Time** column and a time box appears
+beside each date in the popover; the field then reads, say,
+*9/18/2026 8:30 AM – 9/19/2026 3:15 AM* and the duration counts hours and
+minutes. Nothing needs configuring — the control follows the column. The
+**Time of day** property is there for two cases: a canvas app, where there is
+no column to follow and **Show** turns times on; and a Date and Time column
+you would rather treat as whole days, where **Hide** does that.
+
+The two columns need not match. A Date Only start with a Date and Time end
+gets a whole day on one side and a moment on the other.
+
+## Whose clock is the time on?
+
+The **Dataverse user's** — the timezone in their personal options — which is
+the clock every other date on the form uses. It is not the browser's, and the
+two can differ: a user whose Windows clock is set to one zone and whose
+Dataverse options say another sees the Dataverse one, in this control and in
+the native field alike. A Time Zone Independent column shows the same wall
+clock to everyone by design, and the control leaves it alone.
 
 ## How do I report a bug?
 

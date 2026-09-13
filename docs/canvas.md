@@ -72,6 +72,7 @@ them takes a plain value and can be set in the **Advanced** pane:
 | Latest date | `maxDate` | `DateAdd(Today(), 90, TimeUnit.Days)` (optional) |
 | Same day | `sameDay` | `"allow"` or `"block"` (optional, defaults to allow) |
 | Duration | `duration` | `"show"` or `"hide"` (optional, defaults to show) |
+| Time of day | `time` | `"show"` to offer a time beside each date; `"auto"` (the default) means whole days in a canvas app, where there is no column to follow |
 | Quick ranges | `presets` | `"today,last7,last30,thisMonth,next7,next30"` (optional) |
 
 ### 4. Write the changes back

@@ -2,6 +2,10 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
+        <!-- Without this a phone renders the page at a 980px virtual width and
+             scales it down, so no width media query ever fires and the mobile
+             layout cannot be seen here. A model-driven page declares it. -->
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Date Range Picker — dev harness</title>
 
         <!--
@@ -165,9 +169,12 @@
             body.is-bare .harness-stage {
                 max-width: none;
                 width: max-content;
-                min-width: 420px;
+                /* A form column's width on a desktop, and never wider than the
+                   screen — a phone gets the field at the phone's width, which
+                   is the layout the narrow media queries exist for. */
+                min-width: min(420px, 100vw - 32px);
                 border: none;
-                padding: 24px;
+                padding: 16px;
             }
         </style>
     </head>
@@ -184,8 +191,8 @@
         </p>
 
         <div class="harness-controls">
-            <label>Start date <input id="start" type="text" placeholder="yyyy-mm-dd" /></label>
-            <label>End date <input id="end" type="text" placeholder="yyyy-mm-dd" /></label>
+            <label>Start date <input id="start" type="text" placeholder="yyyy-mm-dd[THH:mm]" /></label>
+            <label>End date <input id="end" type="text" placeholder="yyyy-mm-dd[THH:mm]" /></label>
             <label>Earliest <input id="min" type="text" placeholder="yyyy-mm-dd" /></label>
             <label>Latest <input id="max" type="text" placeholder="yyyy-mm-dd" /></label>
 
@@ -204,6 +211,35 @@
                     <option value="hide">hide</option>
                 </select>
             </label>
+
+            <label>
+                Column format
+                <select id="format">
+                    <option value="date">date (Date Only)</option>
+                    <option value="datetime">datetime (Date and Time)</option>
+                </select>
+            </label>
+
+            <label>
+                Time of day
+                <select id="time">
+                    <option value="auto">auto</option>
+                    <option value="show">show</option>
+                    <option value="hide">hide</option>
+                </select>
+            </label>
+
+            <label>
+                Behavior
+                <select id="behavior">
+                    <option value="1">1 — User Local</option>
+                    <option value="2">2 — Date Only</option>
+                    <option value="3">3 — Time Zone Independent</option>
+                    <option value="none">absent (canvas)</option>
+                </select>
+            </label>
+
+            <label>User offset (min ahead of UTC, blank = browser) <input id="userOffset" type="text" placeholder="-300" /></label>
 
             <label>
                 Start column

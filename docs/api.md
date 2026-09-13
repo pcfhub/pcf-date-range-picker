@@ -31,14 +31,19 @@ column. This one binds two, because a date range is two columns. Place the contr
 on the start date; the end date is chosen in the configuration pane. Both are
 written back, and both appear in the outputs.
 
-**Both dates are whole days.** The control works in calendar days throughout and
-ignores any time component. Bind **Date Only** columns.
+**A column's format decides whether it carries a time.** On a Date Only column
+the control works in whole days; on a Date and Time column it offers a time
+beside the date, and the two columns are judged separately. `time` overrides
+that per control: `show` for a canvas app, where there is no column to read,
+and `hide` to keep a Date and Time column to whole days. Its default, `auto`,
+follows the column.
 
-**Dates are read and written in local calendar terms.** A value is interpreted as
-the day the user sees, in their own timezone, for every Dataverse date behaviour
-(User Local, Date Only and Time Zone Independent). This is the behaviour that
-avoids the classic off-by-one, where a date saved in one timezone reads back a day
-earlier in another.
+**Values are read and written on the user's own clock.** A whole day is the day
+the user sees, for every Dataverse date behaviour (User Local, Date Only and
+Time Zone Independent) — the behaviour that avoids the classic off-by-one,
+where a date saved in one timezone reads back a day earlier in another. A time
+is the time the Dataverse user's form shows, converted out of their timezone
+for a User Local column and left alone for a Time Zone Independent one.
 
 **Validation gates the write, not just the display.** When the pair breaks a rule —
 end before start, same day where that is not allowed, or either date outside

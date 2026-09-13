@@ -51,6 +51,13 @@
         max: '',
         sameDay: 'allow',
         duration: 'show',
+        /* 0.3.0: the columns' Format, the time Enum, the Behavior, and the
+           Dataverse user's offset in the platform's sign (blank = the
+           browser's own zone, which hides every conversion bug). */
+        format: 'date',
+        time: 'auto',
+        behavior: '1',
+        userOffset: '',
         presets: 'today,last7,last30,thisMonth,next7,next30',
         startSecurity: 'none',
         endSecurity: 'none',
@@ -98,13 +105,23 @@
     var control = null;
     var notifications = 0;
 
-    /** `yyyy-mm-dd` to a Date at *local* midnight. Never `new Date(string)`. */
+    /**
+     * `yyyy-mm-dd` to a Date at *local* midnight, or `yyyy-mm-ddTHH:mm[:ss]`
+     * to a wall clock as local components. Never `new Date(string)`.
+     */
     function localDate(value) {
-        var parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+        var parts = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?$/.exec(value || '');
 
         return parts === null
             ? null
-            : new Date(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3]));
+            : new Date(
+                Number(parts[1]),
+                Number(parts[2]) - 1,
+                Number(parts[3]),
+                Number(parts[4] || 0),
+                Number(parts[5] || 0),
+                Number(parts[6] || 0),
+            );
     }
 
     function loadStrings(locale) {
@@ -134,6 +151,10 @@
             max: localDate(state.max),
             sameDay: state.sameDay,
             duration: state.duration,
+            format: state.format,
+            time: state.time,
+            behavior: state.behavior === 'none' ? undefined : Number(state.behavior),
+            userOffset: state.userOffset === '' ? null : Number(state.userOffset),
             presets: state.presets,
             startSecurity: state.startSecurity,
             endSecurity: state.endSecurity,
@@ -263,6 +284,10 @@
         wire('max', 'max', value);
         wire('sameDay', 'sameDay', value);
         wire('duration', 'duration', value);
+        wire('format', 'format', value);
+        wire('time', 'time', value);
+        wire('behavior', 'behavior', value);
+        wire('userOffset', 'userOffset', value);
         wire('presets', 'presets', value);
         wire('startSecurity', 'startSecurity', value);
         wire('endSecurity', 'endSecurity', value);
@@ -308,6 +333,10 @@
     el('presets').value = state.presets;
     el('sameDay').value = state.sameDay;
     el('duration').value = state.duration;
+    el('format').value = state.format;
+    el('time').value = state.time;
+    el('behavior').value = state.behavior;
+    el('userOffset').value = state.userOffset;
     el('startSecurity').value = state.startSecurity;
     el('endSecurity').value = state.endSecurity;
     el('theme').value = state.theme;

@@ -215,4 +215,40 @@
   <data name="DateRangePicker_Preset_nextMonth" xml:space="preserve">
     <value>Next month</value>
   </data>
+  <data name="time_Name" xml:space="preserve">
+    <value>Time of day</value>
+  </data>
+  <data name="time_Desc" xml:space="preserve">
+    <value>Whether the picker offers a time beside each date. Auto follows the bound column: a Date and Time column gets a time, a Date Only column does not. In a canvas app there is no column, so Auto means no times — choose Show to enable them. Hide keeps a Date and Time column to whole days.</value>
+  </data>
+  <data name="time_Auto" xml:space="preserve">
+    <value>Auto</value>
+  </data>
+  <data name="time_Show" xml:space="preserve">
+    <value>Show</value>
+  </data>
+  <data name="time_Hide" xml:space="preserve">
+    <value>Hide</value>
+  </data>
+  <data name="DateRangePicker_StartTimeLabel" xml:space="preserve">
+    <value>Start time</value>
+  </data>
+  <data name="DateRangePicker_EndTimeLabel" xml:space="preserve">
+    <value>End time</value>
+  </data>
+  <data name="DateRangePicker_DurationTimed" xml:space="preserve">
+    <value>{0}, {1} to {2}</value>
+  </data>
+  <data name="DateRangePicker_ElapsedDays" xml:space="preserve">
+    <value>{0} days</value>
+  </data>
+  <data name="DateRangePicker_ElapsedDay" xml:space="preserve">
+    <value>1 day</value>
+  </data>
+  <data name="DateRangePicker_ElapsedHours" xml:space="preserve">
+    <value>{0} h</value>
+  </data>
+  <data name="DateRangePicker_ElapsedMinutes" xml:space="preserve">
+    <value>{0} min</value>
+  </data>
 </root>

@@ -27,6 +27,16 @@ export interface CalendarLocale {
     shortestDayNames: string[];
     /** Sunday-first. Used only for the day-header `title`, never for parsing. */
     dayNames: string[];
+    /**
+     * The organisation's short time pattern in .NET's vocabulary — `h:mm tt`,
+     * `HH:mm` — with the two designators it names. Measured off a real
+     * organisation on 12 September 2026: every key of `dateFormattingInfo` is
+     * present, and under two spellings (`shortTimePattern` and
+     * `ShortTimePattern`); the camel-cased one is what the typings name.
+     */
+    shortTimePattern: string;
+    amDesignator: string;
+    pmDesignator: string;
 }
 
 /**
@@ -40,6 +50,9 @@ export const FALLBACK_LOCALE: CalendarLocale = {
     firstDayOfWeek: 0,
     shortestDayNames: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
     dayNames: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    shortTimePattern: 'h:mm tt',
+    amDesignator: 'AM',
+    pmDesignator: 'PM',
 };
 
 /**
@@ -67,7 +80,88 @@ export function toCalendarLocale(info: unknown): CalendarLocale {
             Array.isArray(source.dayNames) && source.dayNames.length === 7
                 ? source.dayNames
                 : FALLBACK_LOCALE.dayNames,
+        shortTimePattern:
+            typeof source.shortTimePattern === 'string' && source.shortTimePattern.length > 0
+                ? source.shortTimePattern
+                : FALLBACK_LOCALE.shortTimePattern,
+        amDesignator:
+            typeof source.amDesignator === 'string' ? source.amDesignator : FALLBACK_LOCALE.amDesignator,
+        pmDesignator:
+            typeof source.pmDesignator === 'string' ? source.pmDesignator : FALLBACK_LOCALE.pmDesignator,
     };
+}
+
+/**
+ * A wall-clock time in the organisation's short time pattern.
+ *
+ * The control's own, rather than `context.formatting`, and the reason is
+ * measured rather than aesthetic: on a real form `formatDateShort(x, true)`
+ * renders the *browser's* clock, `formatTime(x, 1)` the *Dataverse user's*,
+ * and `formatTime(x, 3)` the UTC components — and every one of them renders
+ * the date in front of the time, so none can label a time box. The control
+ * already holds the wall clock as local components, so all that is left is
+ * the pattern, and `dateFormattingInfo` supplies it.
+ *
+ * .NET's tokens, the ones a short time pattern uses: `h`/`hh` twelve-hour,
+ * `H`/`HH` twenty-four, `m`/`mm`, `s`/`ss`, `t`/`tt` for the designator, and
+ * anything in single quotes is literal. Every other character passes through,
+ * which is what carries `:` and `.` and the space.
+ */
+export function formatTimeOfDay(date: Date, locale: CalendarLocale): string {
+    const pattern = locale.shortTimePattern;
+    const hours = date.getHours();
+    const twelve = hours % 12 === 0 ? 12 : hours % 12;
+    const designator = hours < 12 ? locale.amDesignator : locale.pmDesignator;
+    const pad = (n: number): string => String(n).padStart(2, '0');
+
+    let out = '';
+    let i = 0;
+
+    while (i < pattern.length) {
+        const char = pattern[i];
+
+        if (char === "'") {
+            const close = pattern.indexOf("'", i + 1);
+            const end = close === -1 ? pattern.length : close;
+
+            out += pattern.slice(i + 1, end);
+            i = end + 1;
+            continue;
+        }
+
+        if ('hHmst'.includes(char)) {
+            let run = 1;
+
+            while (pattern[i + run] === char) {
+                run += 1;
+            }
+
+            switch (char) {
+                case 'h':
+                    out += run >= 2 ? pad(twelve) : String(twelve);
+                    break;
+                case 'H':
+                    out += run >= 2 ? pad(hours) : String(hours);
+                    break;
+                case 'm':
+                    out += run >= 2 ? pad(date.getMinutes()) : String(date.getMinutes());
+                    break;
+                case 's':
+                    out += run >= 2 ? pad(date.getSeconds()) : String(date.getSeconds());
+                    break;
+                default:
+                    out += run >= 2 ? designator : designator.slice(0, 1);
+            }
+
+            i += run;
+            continue;
+        }
+
+        out += char;
+        i += 1;
+    }
+
+    return out;
 }
 
 /** The seven column headers, rotated so the locale's first day comes first. */
@@ -258,7 +352,7 @@ export function pageWindow(view: CalendarView, months: number): CalendarView {
  * This is the deliberate kind of movement — an arrow key, Home, PageDown — so
  * unlike paging it *is* what the preview follows.
  */
-export function moveFocus(view: CalendarView, next: Date): CalendarView {
+export function moveFocus(view: CalendarView, next: Date, months: 1 | 2 = 2): CalendarView {
     const left = monthNumber(view.leftMonth);
     const target = monthNumber(next);
 
@@ -266,10 +360,11 @@ export function moveFocus(view: CalendarView, next: Date): CalendarView {
 
     if (target < left) {
         leftMonth = startOfMonth(next);
-    } else if (target > left + 1) {
-        // The right-hand month is on screen too, so only stepping off the far
-        // end of *it* pages; landing there leaves the window where it is.
-        leftMonth = startOfMonth(addMonths(next, -1));
+    } else if (target > left + months - 1) {
+        // Every month in the window is on screen, so only stepping off the far
+        // end of the *last* one pages; landing there leaves the window where
+        // it is. With one month showing the last one is the first one.
+        leftMonth = startOfMonth(addMonths(next, -(months - 1)));
     }
 
     return { leftMonth, focusDay: next, pointed: next };

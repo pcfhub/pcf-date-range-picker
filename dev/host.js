@@ -66,6 +66,13 @@
         DateRangePicker_PickEnd: 'Pick an end date',
         DateRangePicker_Clear: 'Clear',
         DateRangePicker_Done: 'Done',
+        DateRangePicker_StartTimeLabel: 'Start time',
+        DateRangePicker_EndTimeLabel: 'End time',
+        DateRangePicker_DurationTimed: '{0}, {1} to {2}',
+        DateRangePicker_ElapsedDays: '{0} days',
+        DateRangePicker_ElapsedDay: '1 day',
+        DateRangePicker_ElapsedHours: '{0} h',
+        DateRangePicker_ElapsedMinutes: '{0} min',
     };
 
     /*
@@ -88,6 +95,15 @@
             'Friday',
             'Saturday',
         ],
+        /*
+         * Twenty-four hour, for the same reason the week is Monday-first: a
+         * fixture in the developer's own culture lets a twelve-hour assumption
+         * through. A real organisation was measured at `h:mm tt` with `AM`/`PM`;
+         * the suite asks for that shape explicitly where it matters.
+         */
+        shortTimePattern: 'HH:mm',
+        amDesignator: 'AM',
+        pmDesignator: 'PM',
     };
 
     var SECURITY = {
@@ -99,6 +115,69 @@
     /** Local components, deliberately. See the header. */
     function localDate(year, month, day) {
         return new Date(year, month - 1, day);
+    }
+
+    /** A wall clock, as local components. What a Date and Time fixture supplies. */
+    function localDateTime(year, month, day, hours, minutes, seconds) {
+        return new Date(year, month - 1, day, hours, minutes, seconds || 0);
+    }
+
+    /**
+     * The platform's write, as measured on 12 September 2026 against a User
+     * Local and a Time Zone Independent column on one record.
+     *
+     * **The platform never reads the instant a control hands it.** It reads
+     * the Date's browser-local components and takes them as the wall clock:
+     *
+     *   UserLocal (1)             the wall clock is the *Dataverse user's*, so
+     *                             it is converted out of the user's zone to
+     *                             UTC and stored as that instant. Handed
+     *                             `14:30:45Z` from a UTC-6 browser (local
+     *                             08:30:45), the server held `13:30:45Z` —
+     *                             08:30:45 in the user's UTC-5.
+     *   TimeZoneIndependent (3)   the wall clock is stored as it is: the same
+     *                             hand-over was held as `08:30:45Z`.
+     *   DateOnly (2)              the day, at UTC midnight; the time is dropped.
+     *   absent (canvas)           no column: the instant, unchanged.
+     *
+     * What comes back as `raw` is what the server holds, as a Date — measured
+     * equal to the Web API value on both behaviours — so this one function is
+     * both halves of the round trip. `userOffset` is in the platform's sign,
+     * minutes *ahead* of UTC (`-300` for UTC-5).
+     */
+    function store(wall, behavior, format, userOffset) {
+        if (wall === null || wall === undefined) {
+            return null;
+        }
+
+        if (format !== 'datetime') {
+            return behavior === 2 || behavior === 3
+                ? new Date(Date.UTC(wall.getFullYear(), wall.getMonth(), wall.getDate()))
+                : new Date(wall.getFullYear(), wall.getMonth(), wall.getDate());
+        }
+
+        var asUTC = Date.UTC(
+            wall.getFullYear(),
+            wall.getMonth(),
+            wall.getDate(),
+            wall.getHours(),
+            wall.getMinutes(),
+            wall.getSeconds(),
+        );
+
+        if (behavior === 2) {
+            return new Date(Date.UTC(wall.getFullYear(), wall.getMonth(), wall.getDate()));
+        }
+
+        if (behavior === 3) {
+            return new Date(asUTC);
+        }
+
+        if (behavior === 1) {
+            return new Date(asUTC - userOffset(wall) * 60000);
+        }
+
+        return new Date(wall.getTime());
     }
 
     var DEFAULTS = {
@@ -153,6 +232,29 @@
          * releases.
          */
         behavior: 1,
+        /*
+         * The columns' `Format` — `'date'` or `'datetime'`, lower-case, as the
+         * platform spells it — and per column, because the maker portal can
+         * pair one of each. `format` sets both; `startFormat`/`endFormat`
+         * override one.
+         */
+        format: 'date',
+        startFormat: undefined,
+        endFormat: undefined,
+        /** The `time` Enum: auto follows the column, show and hide override. */
+        time: 'auto',
+        /*
+         * The Dataverse user's offset from UTC in minutes, in the platform's
+         * sign — *ahead* of UTC, so `-300` is UTC-5 — for any date. `null` is a
+         * user whose zone is the browser's, which hides every conversion bug
+         * and is therefore not what the timed assertions use.
+         *
+         * The no-argument `getTimeZoneOffsetMinutes()` answers the *standard*
+         * offset, not today's: measured `-360` on a day the dated call answered
+         * `-300`. The fixture models it as an hour behind, so a control that
+         * forgets the argument reads every UserLocal time an hour off.
+         */
+        userOffset: null,
         formatCalls: null,
         formatLocale: null,
         /*
@@ -180,26 +282,20 @@
      * the platform never produces — and a stub that can produce a shape the
      * platform cannot is worse than no stub.
      */
-    function property(day, security, error, message, behavior) {
-        var raw = null;
-
-        if (day !== null && day !== undefined) {
-            raw =
-                behavior === 2 || behavior === 3
-                    ? new Date(Date.UTC(day.getFullYear(), day.getMonth(), day.getDate()))
-                    : new Date(day.getFullYear(), day.getMonth(), day.getDate());
-        }
-
+    function property(value, security, error, message, behavior, format, userOffset) {
         return {
-            raw: raw,
+            // The fixture supplies a wall clock; the platform holds whatever
+            // its write would have made of it. See `store`.
+            raw: store(value, behavior, format, userOffset),
             security: SECURITY[security],
             error: error,
             // The platform sets no message when there is no error.
             errorMessage: error ? message : undefined,
-            type: 'DateAndTime.DateOnly',
+            type: format === 'datetime' ? 'DateAndTime.DateAndTime' : 'DateAndTime.DateOnly',
             // Absent entirely on canvas, which is a state the control has to
-            // survive — not `{ Behavior: undefined }`.
-            attributes: behavior === undefined ? undefined : { Behavior: behavior },
+            // survive — not `{ Behavior: undefined }`. On a form the node
+            // carries fourteen keys; these are the two the control reads.
+            attributes: behavior === undefined ? undefined : { Behavior: behavior, Format: format },
         };
     }
 
@@ -240,14 +336,32 @@
                 return STRINGS[key] !== undefined ? STRINGS[key] : key;
             };
 
+        /*
+         * The user's offset for a date, and the standard offset for none. A
+         * `null` userOffset is the browser's own zone, read the platform's way
+         * round; a number is the user's for every date, with the standard
+         * offset an hour behind it.
+         */
+        var userOffset = function (date) {
+            return o.userOffset === null ? -date.getTimezoneOffset() : o.userOffset;
+        };
+
+        var standardOffset = o.userOffset === null
+            ? -new Date(2026, 0, 15).getTimezoneOffset()
+            : o.userOffset - 60;
+
+        var startFormat = o.startFormat || o.format;
+        var endFormat = o.endFormat || o.format;
+
         return {
             parameters: {
-                startDate: property(o.start, o.startSecurity, o.startError, o.errorMessage, o.behavior),
-                endDate: property(o.end, o.endSecurity, o.endError, o.errorMessage, o.behavior),
+                startDate: property(o.start, o.startSecurity, o.startError, o.errorMessage, o.behavior, startFormat, userOffset),
+                endDate: property(o.end, o.endSecurity, o.endError, o.errorMessage, o.behavior, endFormat, userOffset),
                 minDate: { raw: o.min, type: 'DateAndTime.DateOnly' },
                 maxDate: { raw: o.max, type: 'DateAndTime.DateOnly' },
                 sameDay: { raw: o.sameDay, type: 'Enum' },
                 duration: { raw: o.duration, type: 'Enum' },
+                time: { raw: o.time, type: 'Enum' },
                 presets: { raw: o.presets, type: 'SingleLine.Text' },
             },
 
@@ -318,6 +432,10 @@
                 isRTL: o.rtl,
                 languageId: 1033,
                 dateFormattingInfo: o.dateFormatting === null ? undefined : o.dateFormatting,
+                timeZoneUtcOffsetMinutes: standardOffset,
+                getTimeZoneOffsetMinutes: function (date) {
+                    return date === undefined ? standardOffset : userOffset(date);
+                },
             },
         };
     }
@@ -340,6 +458,8 @@
         DEFAULTS: DEFAULTS,
         DATE_FORMATTING: DATE_FORMATTING,
         localDate: localDate,
+        localDateTime: localDateTime,
+        store: store,
         createContext: createContext,
         captureRegistration: captureRegistration,
     };

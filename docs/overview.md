@@ -26,10 +26,16 @@ disagree with each other once somebody saves.
   this or last month, this year, the next 7 or 30 days, next month. The maker
   chooses which appear, and a range already matching one of them shows that
   shortcut as selected.
-- **It gets the day right.** Dates and timezones are the most common source of
-  off-by-one bugs in Power Apps controls. This one reads and writes calendar days
-  from local components throughout, so a user in Auckland and a user in Mexico
-  City see the day they picked.
+- **It gets the day right — and, from 0.3.0, the time.** Dates and timezones
+  are the most common source of off-by-one bugs in Power Apps controls. This
+  one reads each column's behaviour and converts once at each edge, so a user
+  in Auckland and a user in Mexico City see the day they picked, and a time
+  reads on the same clock as the rest of the form.
+- **Date and Time columns get a time.** Place it on one and a time box appears
+  beside each date; the duration counts hours and minutes. A Date Only column
+  gets whole days, as before, and the two can be mixed.
+
+::image{src=media/screenshot-times.png alt="The same field on two Date and Time columns, reading 8/20/2026 8:30 AM to 8/21/2026 5:00 PM, with a Start time and End time box beside the From and To dates under the calendar" zoom}
 - **It looks like the form it is on.** Fluent's design tokens rather than
   hard-coded colours, so it follows the app's theme, its brand colour and dark
   mode. The field is the platform's own 32px filled field, down to the focus
@@ -44,9 +50,9 @@ disagree with each other once somebody saves.
 
 :::callout{type=info}
 Date Range Picker works in **model-driven forms**, **canvas apps** and **custom
-pages**. It binds two **Date Only** columns and needs no special privileges: it
-makes no Web API calls, uses no device features, and reaches no third-party
-service.
+pages**. It binds two **Date Only** or **Date and Time** columns and needs no
+special privileges: it makes no Web API calls, uses no device features, and
+reaches no third-party service.
 :::
 
 Place it on the column holding the **start** date. The maker is then asked which

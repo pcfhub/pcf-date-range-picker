@@ -171,6 +171,10 @@ chrome --headless=new --window-size=700,432 --force-device-scale-factor=2 \
   "http://localhost:8199/dev/harness.html?bare=1&open=1&locale=1033"
 ```
 
+`media/screenshot-times.png` is the same command at `--window-size=700,468`
+with `&format=datetime&behavior=1&userOffset=-300&start=2026-08-20T08:30&end=2026-08-21T17:00`
+appended to the URL.
+
 `npm run smoke` is the assertion half — it drives the real built bundle in Node,
 reads the props the control handed down, and renders the tree with
 `react-dom/server` for the parts that have no props to read, which since 0.2.0

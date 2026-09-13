@@ -1,11 +1,20 @@
 ---
 title: Migration
-description: Moving from 0.1.x to 0.2.0.
+description: Moving between versions.
 order: 9
 appliesTo: ">=0.2.0"
 ---
 
 # Migration
+
+## 0.2.x → 0.3.0
+
+Nothing to do. 0.3.0 widens the two bound properties so the control can also
+be placed on **Date and Time** columns; a control already placed on Date Only
+columns stays bound through the upgrade — checked on a live form, where the
+existing placement came back bound and reading the same days. Whole-day
+behaviour, values and the property names are unchanged. The one addition is
+the optional `time` input, which defaults to following the column.
 
 ## 0.1.x → 0.2.0
 

@@ -3,9 +3,9 @@
 
     "slug": "pcf-date-range-picker",
     "name": "Date Range Picker",
-    "tagline": "Pick a start and end date as one range, on a two-month calendar.",
+    "tagline": "Pick a start and end date — with times, on a Date and Time column — as one range, on a two-month calendar.",
     "category": "input",
-    "tags": ["date", "range", "calendar", "picker", "validation", "react", "fluent"],
+    "tags": ["date", "time", "datetime", "range", "calendar", "picker", "validation", "react", "fluent"],
 
     "control": {
         "namespace": "PCFHub",
@@ -27,7 +27,7 @@
 
     "media": {
         "logo": "media/logo.png",
-        "screenshots": ["media/screenshot.png"]
+        "screenshots": ["media/screenshot.png", "media/screenshot-times.png"]
     },
 
     "demo": {
@@ -46,9 +46,25 @@
                     "maxDate": null,
                     "sameDay": "allow",
                     "duration": "show",
+                    "time": "auto",
                     "presets": "today,last7,last30,thisMonth,next7,next30"
                 },
                 "isDefault": true
+            },
+            {
+                "slug": "with-times",
+                "name": "With times",
+                "description": "A Date and Time range: a time box beside each date in the popover, and a duration in hours and minutes. On a form the control follows the column; this harness has no column, so the preset sets Time of day to Show.",
+                "props": {
+                    "startDate": "2026-08-20T08:30:00",
+                    "endDate": "2026-08-21T17:00:00",
+                    "minDate": null,
+                    "maxDate": null,
+                    "sameDay": "allow",
+                    "duration": "show",
+                    "time": "show",
+                    "presets": "today,last7,thisMonth"
+                }
             },
             {
                 "slug": "no-presets",
@@ -61,6 +77,7 @@
                     "maxDate": null,
                     "sameDay": "allow",
                     "duration": "show",
+                    "time": "auto",
                     "presets": ""
                 }
             },
@@ -75,6 +92,7 @@
                     "maxDate": null,
                     "sameDay": "allow",
                     "duration": "show",
+                    "time": "auto",
                     "presets": "today,thisWeek,thisMonth"
                 }
             },
@@ -89,6 +107,7 @@
                     "maxDate": null,
                     "sameDay": "allow",
                     "duration": "show",
+                    "time": "auto",
                     "presets": ""
                 }
             },
@@ -103,6 +122,7 @@
                     "maxDate": "2026-09-30T12:00:00",
                     "sameDay": "block",
                     "duration": "show",
+                    "time": "auto",
                     "presets": "thisMonth,next7,next30"
                 }
             },
@@ -117,6 +137,7 @@
                     "maxDate": null,
                     "sameDay": "allow",
                     "duration": "show",
+                    "time": "auto",
                     "presets": "today,last7,last30,thisMonth,next7,next30"
                 }
             }

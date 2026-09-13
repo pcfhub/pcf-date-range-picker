@@ -202,6 +202,14 @@
     color: var(--DateRangePicker-foreground-secondary);
 }
 
+/* The platform's own lookup and date fields treat the glyph as its own target:
+   hover it and it turns brand blue, with a tooltip. The field's background
+   hover is the field's; this one is the glyph's, and only the glyph's, so the
+   two read as the native pair does. */
+.DateRangePicker .DateRangePicker-field:not(:disabled) .DateRangePicker-icon:hover {
+    color: var(--DateRangePicker-brand);
+}
+
 .DateRangePicker .DateRangePicker-field:disabled .DateRangePicker-icon {
     color: var(--DateRangePicker-foreground-disabled);
 }
@@ -472,11 +480,23 @@
     gap: var(--spacingHorizontalM, 12px);
     padding: var(--spacingVerticalS, 8px) var(--spacingVerticalM, 12px);
     border-top: 1px solid var(--colorNeutralStroke2, #e0e0e0);
+    /* The surface takes its width from its content, and a wrapping row still
+       reports its single-line width as content — so with four typed boxes
+       (0.3.0) the footer widened the whole popover past the viewport and the
+       Done button fell off the edge. Containing the inline size takes the
+       footer out of that measurement: the calendar decides the width, and the
+       footer wraps inside it. */
+    contain: inline-size;
 }
 
 .DateRangePicker-popover .DateRangePicker-typed {
     display: flex;
     flex-wrap: wrap;
+    gap: var(--spacingHorizontalS, 8px);
+}
+
+.DateRangePicker-popover .DateRangePicker-typed-pair {
+    display: flex;
     gap: var(--spacingHorizontalS, 8px);
 }
 
@@ -508,10 +528,27 @@
     outline-offset: -1px;
 }
 
+/* A time box sits beside its date box and is narrower than it: no year, but
+   room for `08:30 AM` plus the browser's clock glyph — 7.5em clipped the
+   designator to "AN" in Chrome. The row already wraps, so on a narrow surface
+   the four boxes fall into two rows of date-and-time pairs. */
+.DateRangePicker-popover .DateRangePicker-typed-field.is-time .DateRangePicker-input {
+    width: 9.25em;
+}
+
+.DateRangePicker-popover .DateRangePicker-input:disabled {
+    color: var(--colorNeutralForegroundDisabled, #bdbdbd);
+    background-color: var(--colorNeutralBackgroundDisabled, #f0f0f0);
+    border-color: var(--colorNeutralStrokeDisabled, #e0e0e0);
+}
+
 .DateRangePicker-popover .DateRangePicker-actions {
     display: flex;
     align-items: center;
     gap: var(--spacingHorizontalS, 8px);
+    /* Keeps the buttons at the end when the footer wraps them onto their own
+       line, which four typed boxes (0.3.0) make the common case. */
+    margin-inline-start: auto;
 }
 
 .DateRangePicker-popover .DateRangePicker-hint {
@@ -560,8 +597,15 @@
  * pushes the calendar — the thing the user opened this for — off the screen.
  * The same buttons wrap as chips instead, which is a row of two or three and
  * costs one line rather than seven.
+ *
+ * 44rem, not the 30rem this shipped with: the rail sits beside the two months
+ * only when there is room for both, about 700px, and below that the flex row
+ * wraps the rail to its own line *as a column* — seven full-width rows above
+ * the calendar. That is what a real form showed at a viewport just under
+ * 500px, where 30rem had not fired. The one-month layout is a separate
+ * decision, made in the component at 36rem.
  */
-@media screen and (max-width: 30rem) {
+@media screen and (max-width: 44rem) {
     .DateRangePicker-popover .DateRangePicker-presets {
         flex-direction: row;
         flex-wrap: wrap;
@@ -577,6 +621,130 @@
         border-color: var(--colorNeutralStroke1, #d1d1d1);
         border-radius: var(--borderRadiusCircular, 999px);
         padding-inline: var(--spacingHorizontalM, 12px);
+    }
+}
+
+/*
+ * Narrower still: one month (the component decides), centred, and the surface
+ * never wider than the screen. The field text is allowed to wrap here — on a
+ * phone a range with times is "9/12/2026 6:00 AM – 10/31/2026 10:00 AM", and
+ * an ellipsis after "10" is a field that hides half its value.
+ */
+@media screen and (max-width: 36rem) {
+    .DateRangePicker-popover {
+        max-width: calc(100vw - 16px);
+        /*
+         * The whole viewport, less a margin, rather than the desktop's 80vh.
+         * On a phone the popover is the screen, and capping it at four fifths
+         * put the Done button behind a scrollbar on a form where the whole
+         * thing would have fitted. The 22rem floor stays for the same reason
+         * it exists on the desktop rule: a short frame must clip, not collapse.
+         * `dvh` follows a mobile browser's collapsing toolbar; `vh` is the
+         * fallback for a WebView that lacks it.
+         */
+        max-height: max(22rem, calc(100vh - 24px));
+        max-height: max(22rem, calc(100dvh - 24px));
+    }
+
+    /* Tighter vertically, so a two-row chip rail, a five-row month and a
+       four-box footer fit a phone without scrolling: 40px rows, 4px chip
+       padding, and the body's gap halved. */
+    .DateRangePicker-popover .DateRangePicker-popover-body {
+        gap: var(--spacingVerticalS, 8px);
+    }
+
+    .DateRangePicker-popover .DateRangePicker-preset {
+        padding-block: 4px;
+    }
+
+    /*
+     * The one month fills the surface rather than sitting at its desktop
+     * 224px beside an empty half. The chip row already makes the surface as
+     * wide as the screen; a phone calendar the width of a thumb-column next
+     * to that much white space read as a layout error on a real form. Full
+     * width also makes each day a 40px-tall target the full column wide, which
+     * is what a finger needs and a desktop pointer never did.
+     */
+    .DateRangePicker-popover .DateRangePicker-calendar,
+    .DateRangePicker-popover .DateRangePicker-months,
+    .DateRangePicker-popover .DateRangePicker-month {
+        width: 100%;
+    }
+
+    .DateRangePicker-popover .DateRangePicker-week {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+
+    .DateRangePicker-popover .DateRangePicker-cell {
+        height: 40px;
+    }
+
+    /*
+     * The day stays a 36px circle in a 40px row, as it is a 32px one on a desktop — a
+     * 62px-wide pill for the selected day is what `width: 100%` gives once the
+     * column is wider than it is tall. That leaves the band, which the desktop
+     * paints on the day button, with a gap either side of every day; so here
+     * the *cell* paints it — full width between the ends, half width under an
+     * end — and the button carries only its own circle.
+     */
+    .DateRangePicker-popover .DateRangePicker-day {
+        width: 36px;
+        height: 36px;
+        border-radius: var(--borderRadiusCircular, 999px);
+    }
+
+    .DateRangePicker-popover .DateRangePicker-day.is-between {
+        background-color: transparent;
+    }
+
+    .DateRangePicker-popover .DateRangePicker-day.is-start,
+    .DateRangePicker-popover .DateRangePicker-day.is-end {
+        border-radius: var(--borderRadiusCircular, 999px);
+    }
+
+    .DateRangePicker-popover .DateRangePicker-cell:has(.is-between) {
+        background-color: var(--colorBrandBackground2, #ebf3fc);
+    }
+
+    .DateRangePicker-popover .DateRangePicker-cell:has(.is-start) {
+        background-image: linear-gradient(
+            to var(--DateRangePicker-band-toward, right),
+            transparent 50%,
+            var(--colorBrandBackground2, #ebf3fc) 50%
+        );
+    }
+
+    .DateRangePicker-popover .DateRangePicker-cell:has(.is-end) {
+        background-image: linear-gradient(
+            to var(--DateRangePicker-band-toward, right),
+            var(--colorBrandBackground2, #ebf3fc) 50%,
+            transparent 50%
+        );
+    }
+
+    /* A single-day range has no band to meet. */
+    .DateRangePicker-popover .DateRangePicker-cell:has(.is-single) {
+        background-image: none;
+    }
+
+    .DateRangePicker-popover[dir="rtl"] .DateRangePicker-cell,
+    [dir="rtl"] .DateRangePicker-popover .DateRangePicker-cell {
+        --DateRangePicker-band-toward: left;
+    }
+
+    /*
+     * A month is built as six rows so two months stay level; with one month
+     * the sixth row is an empty band under a five-row month. Drop a row with
+     * no day in it. The height then differs by a row between months, which
+     * a scrolling surface on a phone absorbs and a desktop pair would not.
+     */
+    .DateRangePicker-popover .DateRangePicker-week:not(:has(.DateRangePicker-day, .DateRangePicker-weekday)) {
+        display: none;
+    }
+
+    .DateRangePicker .DateRangePicker-value {
+        white-space: normal;
+        overflow-wrap: anywhere;
     }
 }
 

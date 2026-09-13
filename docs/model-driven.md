@@ -25,8 +25,8 @@ range genuinely is two columns, and this is how you say which one holds the end.
 
 | Column type | Supported | Notes |
 | --- | --- | --- |
-| Date Only | Yes | The intended binding for both properties. |
-| Date and Time | No | The control works in whole days; a time component would be silently discarded. |
+| Date Only | Yes | Whole days. |
+| Date and Time | Yes | From 0.3.0. A time box beside each date; the time is on the Dataverse user's clock, as the native field's is. |
 | Anything else | No | The control does not appear in the component list for the column. |
 
 ## Form state it honours

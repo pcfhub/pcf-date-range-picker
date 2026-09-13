@@ -215,4 +215,40 @@
   <data name="DateRangePicker_Preset_nextMonth" xml:space="preserve">
     <value>Nächster Monat</value>
   </data>
+  <data name="time_Name" xml:space="preserve">
+    <value>Uhrzeit</value>
+  </data>
+  <data name="time_Desc" xml:space="preserve">
+    <value>Ob die Auswahl neben jedem Datum eine Uhrzeit anbietet. „Automatisch“ folgt der gebundenen Spalte: eine Datum-und-Uhrzeit-Spalte erhält eine Uhrzeit, eine Nur-Datum-Spalte nicht. In einer Canvas-App gibt es keine Spalte, daher bedeutet „Automatisch“ keine Uhrzeiten — wählen Sie „Anzeigen“, um sie zu aktivieren. „Ausblenden“ beschränkt auch eine Datum-und-Uhrzeit-Spalte auf ganze Tage.</value>
+  </data>
+  <data name="time_Auto" xml:space="preserve">
+    <value>Automatisch</value>
+  </data>
+  <data name="time_Show" xml:space="preserve">
+    <value>Anzeigen</value>
+  </data>
+  <data name="time_Hide" xml:space="preserve">
+    <value>Ausblenden</value>
+  </data>
+  <data name="DateRangePicker_StartTimeLabel" xml:space="preserve">
+    <value>Startzeit</value>
+  </data>
+  <data name="DateRangePicker_EndTimeLabel" xml:space="preserve">
+    <value>Endzeit</value>
+  </data>
+  <data name="DateRangePicker_DurationTimed" xml:space="preserve">
+    <value>{0}, {1} bis {2}</value>
+  </data>
+  <data name="DateRangePicker_ElapsedDays" xml:space="preserve">
+    <value>{0} Tage</value>
+  </data>
+  <data name="DateRangePicker_ElapsedDay" xml:space="preserve">
+    <value>1 Tag</value>
+  </data>
+  <data name="DateRangePicker_ElapsedHours" xml:space="preserve">
+    <value>{0} Std.</value>
+  </data>
+  <data name="DateRangePicker_ElapsedMinutes" xml:space="preserve">
+    <value>{0} Min.</value>
+  </data>
 </root>

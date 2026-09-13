@@ -215,4 +215,40 @@
   <data name="DateRangePicker_Preset_nextMonth" xml:space="preserve">
     <value>Le mois prochain</value>
   </data>
+  <data name="time_Name" xml:space="preserve">
+    <value>Heure</value>
+  </data>
+  <data name="time_Desc" xml:space="preserve">
+    <value>Indique si le sélecteur propose une heure à côté de chaque date. « Automatique » suit la colonne liée : une colonne Date et heure reçoit une heure, une colonne Date seule non. Dans une application canevas il n’y a pas de colonne, donc « Automatique » signifie sans heure — choisissez « Afficher » pour les activer. « Masquer » limite même une colonne Date et heure à des jours entiers.</value>
+  </data>
+  <data name="time_Auto" xml:space="preserve">
+    <value>Automatique</value>
+  </data>
+  <data name="time_Show" xml:space="preserve">
+    <value>Afficher</value>
+  </data>
+  <data name="time_Hide" xml:space="preserve">
+    <value>Masquer</value>
+  </data>
+  <data name="DateRangePicker_StartTimeLabel" xml:space="preserve">
+    <value>Heure de début</value>
+  </data>
+  <data name="DateRangePicker_EndTimeLabel" xml:space="preserve">
+    <value>Heure de fin</value>
+  </data>
+  <data name="DateRangePicker_DurationTimed" xml:space="preserve">
+    <value>{0}, du {1} au {2}</value>
+  </data>
+  <data name="DateRangePicker_ElapsedDays" xml:space="preserve">
+    <value>{0} jours</value>
+  </data>
+  <data name="DateRangePicker_ElapsedDay" xml:space="preserve">
+    <value>1 jour</value>
+  </data>
+  <data name="DateRangePicker_ElapsedHours" xml:space="preserve">
+    <value>{0} h</value>
+  </data>
+  <data name="DateRangePicker_ElapsedMinutes" xml:space="preserve">
+    <value>{0} min</value>
+  </data>
 </root>
