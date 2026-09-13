@@ -977,6 +977,52 @@ items below were not each measured individually and stay listed.
   harness; the mobile app's WebView, its viewport meta and its own chrome
   around the form are the unmeasured half.
 
+## 0.3.1 — a scrollbar that appeared for a tenth of a second
+
+Reported from the form the day 0.3.0 shipped: open the picker and a vertical
+scrollbar appears on the popover, then vanishes about a second later — desktop
+and phone alike. The screenshot caught the surface mid-fade, which pointed at
+the entrance animation and was a red herring: Fluent's two keyframes animate
+opacity and a translate, neither of which touches layout.
+
+**What it was.** Sampled every 8ms from the click in `npm start`, which hosts
+the real Fluent (the dev harness's stub could never have shown this): between
+roughly 20ms and 120ms after opening, `scrollHeight` read 546 against a
+`clientHeight` of 545, with every child's height unchanged — and two extra
+children present, one of them ending exactly one pixel past the content.
+Tabster, Fluent's focus trap, inserts two `<i data-tabster-dummy>` guards at
+the start and end of the surface **in flow**, and gives them
+`position: fixed` about a hundred milliseconds later. Until it does, the
+trailing guard is a one-pixel line box under the footer, and one pixel of
+content past the surface is a scrollbar. The stylesheet now takes them out of
+flow from the first frame; Tabster's inline `fixed` then supersedes it, and
+the trap still wraps (measured: Tab from Done lands on the first chip).
+
+**What it also found.** Fluent's own `PopoverSurface` class sets
+`padding: 16px`, Griffel injects it after this stylesheet, and one class
+against one class is decided by order — so `.DateRangePicker-popover {
+padding: 0 }` had been losing since 0.2.0, silently, and the surface carried
+32px of padding around a body and a footer that have their own. The harness
+stub has no padding to lose to, which is why every measurement here was 32px
+shorter than the form's: 531px in the harness, 577px with real Fluent, against
+a 579px cap at a 603px viewport. That two-pixel margin is why 0.3.0 scrolled on
+the form where the harness said it would not. The padding rule now lives under
+a doubled selector — and *only* the padding, because doubling the whole
+surface rule outranked the narrow media rules below it, which are one class
+deep, and silently disabled the phone height cap. Measured after: 547px.
+
+Two rules for the file, both learned here: **a Fluent surface's own class is a
+competitor for every declaration on that element**, so check the computed
+style rather than the stylesheet; and **the stub is not the surface** — a
+measurement that has to be true of the real popover is taken in `npm start`.
+
+### Not verified in 0.3.1
+
+- The fix is measured in `npm start` at 525×603 and on the desktop pane; the
+  form itself is the walkthrough.
+- Tabster's guard timing is Fluent 9.46's. A later Fluent that inserts the
+  guards already positioned makes the rule redundant, not wrong.
+
 ## Still open
 
 Everything here is **Not verified** in the strict sense: read-correct against

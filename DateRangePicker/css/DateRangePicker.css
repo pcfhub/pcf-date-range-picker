@@ -236,8 +236,26 @@
  * touching the host page; just anchored to an element that exists.
  * ---------------------------------------------------------------------------
  */
-.DateRangePicker-popover {
+.DateRangePicker-popover.DateRangePicker-popover {
+    /*
+     * Doubled, and that is the whole point of the doubling: Fluent's own
+     * PopoverSurface class sets `padding: 16px`, Griffel injects it after this
+     * stylesheet, and one class against one class is decided by order — so a
+     * plain `.DateRangePicker-popover { padding: 0 }` lost, silently, and the
+     * surface carried 32px of padding around a body and a footer that already
+     * have their own. The dev harness never showed it because its Fluent stub
+     * has no padding to lose to. Measured with real Fluent at a 603px-tall
+     * viewport: 577px of popover against a 579px cap, which on a form whose
+     * viewport is smaller than the window is a scrollbar.
+     *
+     * Only the padding lives under the doubled selector. Everything else on
+     * the surface stays one class deep so the narrow media rules below, which
+     * are one class deep too, still win by order.
+     */
     padding: 0;
+}
+
+.DateRangePicker-popover {
     /*
      * Two stacked months, a rail and a footer are taller than a phone, and a
      * PopoverSurface does not scroll on its own — so the Done and Clear buttons
@@ -258,6 +276,23 @@
     font-family: var(--fontFamilyBase, "Segoe UI", sans-serif);
     font-size: var(--fontSizeBase300, 14px);
     color: var(--colorNeutralForeground1, #242424);
+}
+
+/*
+ * Fluent's focus trap (Tabster) puts two invisible `<i data-tabster-dummy>`
+ * guards at the start and end of the surface. It inserts them in flow and
+ * makes them `position: fixed` about 100ms later — and in between, the
+ * trailing one is a one-pixel line box under the footer. One pixel of content
+ * past the surface's height is a scrollbar, so every open of the popover
+ * showed a scrollbar for a tenth of a second and then lost it, on every
+ * screen size. Reported from a form; measured here at 546 against 545 for the
+ * frames the guard was in flow. Out of flow from the first frame, they never
+ * take a pixel; Tabster's own inline `fixed` then supersedes this harmlessly.
+ */
+.DateRangePicker-popover [data-tabster-dummy] {
+    position: absolute;
+    inset-block-start: 0;
+    height: 0;
 }
 
 .DateRangePicker-popover .DateRangePicker-popover-body {
