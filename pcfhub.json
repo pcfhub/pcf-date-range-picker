@@ -5,6 +5,7 @@
     "name": "Date Range Picker",
     "tagline": "Pick a start and end date — with times, on a Date and Time column — as one range, on a two-month calendar.",
     "category": "input",
+    "hosts": ["canvas", "model-driven"],
     "tags": ["date", "time", "datetime", "range", "calendar", "picker", "validation", "react", "fluent"],
 
     "control": {
