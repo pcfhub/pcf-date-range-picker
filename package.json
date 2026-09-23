@@ -14,7 +14,9 @@
     "refreshTypes": "pcf-scripts refreshTypes",
     "lint": "eslint DateRangePicker --ext .ts,.tsx",
     "smoke": "node dev/smoke.js",
-    "harness": "node dev/serve.js"
+    "harness": "node dev/serve.js",
+    "bump": "node scripts/version.mjs",
+    "release": "node scripts/release.mjs"
   },
   "devDependencies": {
     "@fluentui/react-components": "9.46.2",
