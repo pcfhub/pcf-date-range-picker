@@ -31,17 +31,15 @@ const root = path.join(__dirname, '..');
 const page = path.join(__dirname, 'harness.html');
 
 /*
- * A virtual control has no harness page: `--framework react` deletes it,
- * because a virtual bundle expects Fluent under a global and
- * `@fluentui/react-components` ships no UMD build to put in a `<script src>`.
- * Say that rather than serving a 404 the browser explains badly.
+ * Every shape scaffolds a harness page, so a missing one means somebody removed
+ * it. Say that rather than serving a 404 the browser explains badly.
  */
 if (!fs.existsSync(page)) {
     console.error(
         '\n  No dev/harness.html in this repository.\n\n'
-        + '  A React (virtual) control has no harness page — there is no UMD build of\n'
-        + '  Fluent 9 to load in a plain one. Use `npm start` to see it, and\n'
-        + '  `npm run smoke` to assert on it; both work on that shape unchanged.\n',
+        + '  Every shape ships one, so this repository dropped it. `npm start` and\n'
+        + '  `npm run smoke` both still work; restore the page from the template if\n'
+        + '  you want the switches back.\n',
     );
     process.exit(1);
 }
