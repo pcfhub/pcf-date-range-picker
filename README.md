@@ -5,6 +5,8 @@ Pick a start and end date as one range, on a two-month calendar.
 [![Build](https://github.com/pcfhub/pcf-date-range-picker/actions/workflows/build.yml/badge.svg)](https://github.com/pcfhub/pcf-date-range-picker/actions/workflows/build.yml)
 [![Release](https://github.com/pcfhub/pcf-date-range-picker/actions/workflows/release.yml/badge.svg)](https://github.com/pcfhub/pcf-date-range-picker/actions/workflows/release.yml)
 
+[![Try it live on PCFHub](https://pcfhub.dev/badges/try-it-live.svg)](https://pcfhub.dev/components/pcf-date-range-picker)
+
 Documentation lives on [PCFHub](https://pcfhub.dev/components/pcf-date-range-picker), built
 from the `docs/` directory in this repository. Edit the Markdown here; the hub
 recompiles it.
