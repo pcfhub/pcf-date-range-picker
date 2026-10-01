@@ -4,6 +4,7 @@
     "slug": "pcf-date-range-picker",
     "name": "Date Range Picker",
     "tagline": "Pick a start and end date — with times, on a Date and Time column — as one range, on a two-month calendar.",
+    "summary": "One field for a start date and an end date. Open it and a two-month calendar appears: click the first day, click the last, and both dates are written to their own Dataverse columns.\n\n- Quick ranges such as the last 7 days, this month or next month, chosen by the maker\n- Reads each column's behaviour, so users in different time zones see the day they picked\n- On Date and Time columns, a time for each end of the range",
     "category": "input",
     "hosts": ["canvas", "model-driven"],
     "tags": ["date", "time", "datetime", "range", "calendar", "picker", "validation", "react", "fluent"],
