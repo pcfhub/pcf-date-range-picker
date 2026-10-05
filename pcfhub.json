@@ -8,6 +8,8 @@
     "category": "input",
     "hosts": ["canvas", "model-driven"],
     "tags": ["date", "time", "datetime", "range", "calendar", "picker", "validation", "react", "fluent"],
+    "supportLevel": "reference",
+    "builtWith": "ai",
 
     "control": {
         "namespace": "PCFHub",

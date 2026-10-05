@@ -11,6 +11,10 @@ appears: click the first day, click the last, and the range is drawn between
 them. Quick ranges sit beside it for the periods people actually pick, and both
 dates are written back to their own Dataverse columns.
 
+:::callout{type=warning}
+**Reference example · built with AI.** This control was written with AI (Claude) and tested on a live Dataverse form; its code has not been reviewed line by line. It is published as a worked example and is not maintained — read the source and [SPEC.md](https://github.com/pcfhub/pcf-date-range-picker/blob/main/SPEC.md) (what was measured on the form) before you use it. Fixes are not guaranteed.
+:::
+
 It replaces the usual arrangement of two unrelated date fields that only
 disagree with each other once somebody saves.
 

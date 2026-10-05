@@ -2,6 +2,8 @@
 
 Pick a start and end date as one range, on a two-month calendar.
 
+> **Reference example · built with AI.** This control was written with AI (Claude) and tested on a live Dataverse form; its code has not been reviewed line by line. It is published as a worked example and is not maintained — read the source and [`SPEC.md`](SPEC.md) (what was measured on the form) before you use it. Fixes are not guaranteed.
+
 [![Build](https://github.com/pcfhub/pcf-date-range-picker/actions/workflows/build.yml/badge.svg)](https://github.com/pcfhub/pcf-date-range-picker/actions/workflows/build.yml)
 [![Release](https://github.com/pcfhub/pcf-date-range-picker/actions/workflows/release.yml/badge.svg)](https://github.com/pcfhub/pcf-date-range-picker/actions/workflows/release.yml)
 
