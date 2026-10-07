@@ -7,6 +7,35 @@ appliesTo: ">=0.2.0"
 
 # Migration
 
+## 0.3.0 or 0.3.1 → 0.3.2
+
+**On a model-driven form: nothing to do, and nothing changes.**
+
+**In a canvas app, what the control shows changes, because it was wrong.**
+0.3.0 and 0.3.1 read every canvas date on the UTC clock and showed a time
+beside it, asked for or not. 0.3.2 reads it on the device's clock.
+
+| | 0.3.0 – 0.3.1 | 0.3.2 |
+| --- | --- | --- |
+| `Date(2026, 10, 6)` in Mexico City | 10/6/2026 6:00 AM | 10/6/2026 |
+| The same in Berlin | 10/5/2026 10:00 PM | 10/6/2026 |
+| A time, with `time` left on `"auto"` | shown, on the UTC clock | not shown |
+| A time, with `time` set to `"show"` | shown, on the UTC clock | shown, on the device's clock |
+
+One thing to do, and only if your app shows times: **set `time` to `"show"`.**
+Under `"auto"` a canvas app now gets whole days, which is what this page and
+the property's description always said. The values your formulas hand in and
+read back are moments, as before; a whole day now comes back at midday of the
+day picked rather than at a UTC hour.
+
+**Importing the solution does not update a canvas app that already has the
+control.** A published app carries its own copy. Open the app in Studio,
+accept the update if Studio offers one, then **save and publish** — and if
+Save is greyed out, change any formula first so there is something to save.
+Publishing an app Studio considers unchanged left the old build in place when
+this was tested. Check a date in the published app afterwards: under 0.3.2 a
+whole day shows no time.
+
 ## 0.2.x → 0.3.0
 
 Nothing to do. 0.3.0 widens the two bound properties so the control can also

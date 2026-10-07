@@ -104,8 +104,33 @@ Patch(Bookings, ThisItem, { CheckIn: varStart, CheckOut: varEnd })
 ```
 
 :::callout{type=info}
-A canvas app has no Dataverse column behind the control, so there is no column
-metadata and no field-level security to read. Both are simply absent rather than
-restrictive, so the control behaves as though everything is readable and
-editable.
+A canvas app has no Dataverse column behind the control, whatever the formula
+reads from — a variable, a collection, a Dataverse table, a SharePoint list. So
+there is no column behaviour and no field-level security to follow: the control
+takes each value as the moment it is, and behaves as though everything is
+readable and editable.
+:::
+
+## Dates and times in a canvas app
+
+- **A date is a whole day, in the clock of the device.** `Date(2026, 10, 6)`,
+  `Today()` and a Dataverse Date Only column all show as 6 October, wherever
+  the app is opened.
+- **Times are off unless you ask.** `time` is `"auto"` by default, and in a
+  canvas app `auto` means whole days: the app cannot tell the control whether a
+  value is a date or a date and time. Set `time` to `"show"` to offer a time
+  beside each date.
+- **A time is shown and typed on the device's clock**, the same clock `Now()`
+  and a canvas label use. A canvas app has no Dataverse user time zone.
+- **What comes back is a moment.** A whole day comes back at midday of that
+  day, so `Text(DateRangePicker1.startDate, "yyyy-mm-dd")` names the day you
+  picked on any device. With `time` set to `"show"` it is the exact moment.
+
+:::callout{type=warning}
+**Before 0.3.2 this was wrong in every canvas app.** The control showed the UTC
+clock, and showed a time even for a plain date: `Date(2026, 10, 6)` read
+"10/6/2026 6:00 AM" in Mexico City and "10/5/2026 10:00 PM" in Berlin, a day
+early for everyone east of UTC. Update to 0.3.2 or later. If your app relied on
+the time appearing by itself, set `time` to `"show"` — see
+[Migration](migration).
 :::

@@ -441,9 +441,10 @@ check(
 );
 
 /*
- * Canvas has no column and therefore no Behavior. Absent falls to the instant
- * reading, which is the one that cannot be wrong about a value it was never
- * told anything about.
+ * A host that hands over no `attributes` — the hub's demo, `npm start` — has
+ * no Behavior. Absent falls to the instant reading, which is the one that
+ * cannot be wrong about a value it was never told anything about. (A canvas
+ * app is not this host: it states a Behavior about nothing. See the end.)
  */
 check(
     'and a host with no column metadata at all still reads the day',
@@ -631,7 +632,7 @@ check(
 );
 
 check(
-    'on canvas there is no column, so the time input decides',
+    'on a host with no attributes there is no column, so the time input decides',
     mount({ behavior: undefined, time: 'show' }).props().startHasTime === true
         && mount({ behavior: undefined, time: 'auto' }).props().startHasTime === false,
 );
@@ -1265,6 +1266,115 @@ mount({}).destroy();
 check('destroy() releases every timer the control took', time.pending() === timersBefore, `${timersBefore} → ${time.pending()}`);
 
 check('and every document-level listener', listeners() === listenersBefore, `${listenersBefore} → ${listeners()}`);
+
+/*
+ * A canvas app, which is not a host without `attributes`.
+ *
+ * Every assertion above that says "canvas" was written against
+ * `behavior: undefined` — no `attributes` at all — because that is what this
+ * rig, the template's and the skill all said canvas hands over. A probe control
+ * read a published canvas app on 6 October 2026: every bound property gets an
+ * `attributes` describing the *property* (`EntityLogicalName` empty,
+ * `LogicalName` its own name). For this control's two properties that is
+ * `Behavior: 3` and `Format: 'datetime'`, whatever the maker binds, over a
+ * `raw` that is the true instant — **local** midnight for a day. 0.3.1 took
+ * both at their word: it showed a time under `auto` and read the UTC clock,
+ * so `Date(2026, 10, 6)` read "10/6/2026 6:00 AM" at UTC-6 and "10/5/2026
+ * 10:00 PM" in Berlin (watched in a canvas app, 6 October 2026). Hence the
+ * zones: the day itself only moves east of UTC, and a suite run from the
+ * Americas cannot see that half.
+ */
+const homeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+const inZone = (zone, run) => {
+    process.env.TZ = zone;
+
+    try {
+        return run();
+    } finally {
+        // Deleting TZ does not put the machine's zone back on Windows; naming it does.
+        process.env.TZ = homeZone;
+    }
+};
+
+for (const zone of ['America/Mexico_City', 'Europe/Berlin', 'Asia/Tokyo', 'Pacific/Auckland']) {
+    const read = inZone(zone, () => {
+        const canvas = mount({ host: 'canvas', start: day(2026, 10, 6), end: day(2026, 10, 9) });
+
+        return `${canvas.props().startDate.getDate()}–${canvas.props().endDate.getDate()}`;
+    });
+
+    check(`canvas, ${zone}: a day is read from the instant it is, not from the UTC half its Behavior points at`, read === '6–9', read);
+
+    const written = inZone(zone, () => {
+        const canvas = mount({ host: 'canvas', start: null, end: null });
+
+        canvas.props().onChange(day(2026, 10, 6), day(2026, 10, 9));
+
+        const out = canvas.outputs().startDate;
+
+        // A canvas formula reads the output as the instant it is.
+        return `${out.getDate()} at ${out.getHours()}`;
+    });
+
+    check(`canvas, ${zone}: a picked day goes out at local midday, the same day for the formula that reads it`, written === '6 at 12', written);
+}
+
+check(
+    'canvas: a time the maker asked for is the wall clock of the instant, not its UTC clock',
+    inZone('Europe/Berlin', () => {
+        const canvas = mount({
+            host: 'canvas', time: 'show', format: 'datetime',
+            start: host.localDateTime(2026, 10, 6, 17, 30), end: host.localDateTime(2026, 10, 6, 19, 0),
+        });
+
+        return canvas.props().startHasTime === true && canvas.props().startDate.getHours() === 17
+            && canvas.props().startDate.getMinutes() === 30 && canvas.props().endDate.getHours() === 19;
+    }),
+);
+
+check(
+    'canvas: the host\'s Format is the declared type talking, so `auto` shows no time whichever type it names',
+    mount({ host: 'canvas', time: 'auto' }).props().startHasTime === false
+        && mount({ host: 'canvas', time: 'auto', canvasType: 'DateAndTime.DateOnly' }).props().startHasTime === false
+        && mount({ host: 'canvas', time: 'show' }).props().startHasTime === true,
+);
+
+check(
+    'canvas: a plain date shows no time and keeps its midnight, in the zone 0.3.1 was watched getting it wrong',
+    inZone('America/Mexico_City', () => {
+        const canvas = mount({ host: 'canvas', start: day(2026, 10, 6), end: day(2026, 10, 9) });
+
+        return canvas.props().startHasTime === false && canvas.props().startDate.getDate() === 6
+            && canvas.props().startDate.getHours() === 0;
+    }),
+);
+
+check(
+    'canvas: a property the host calls date-only is the instant too, though its Behavior says 2',
+    inZone('Europe/Berlin', () => {
+        const canvas = mount({ host: 'canvas', canvasType: 'DateAndTime.DateOnly', start: day(2026, 10, 6), end: day(2026, 10, 9) });
+
+        return canvas.props().startDate.getDate() === 6 && canvas.props().endDate.getDate() === 9;
+    }),
+);
+
+check(
+    'rig: a canvas host names no table and its own property, states a Behavior, and answers the offset with the browser\'s sign',
+    inZone('Europe/Berlin', () => {
+        const context = host.createContext({ host: 'canvas', start: day(2026, 10, 6) });
+        const start = context.parameters.startDate;
+
+        return start.attributes.EntityLogicalName === '' && start.attributes.LogicalName === 'startDate'
+            && start.attributes.Behavior === 3 && start.attributes.Format === 'datetime' && start.raw.toISOString() === '2026-10-05T22:00:00.000Z'
+            && context.userSettings.getTimeZoneOffsetMinutes(start.raw) === -120;
+    }),
+);
+
+check(
+    'rig: a form names the table, which is how the control tells a column from a description of nothing',
+    host.createContext({ behavior: 2 }).parameters.startDate.attributes.EntityLogicalName === 'booking',
+);
 
 disposeAll();
 

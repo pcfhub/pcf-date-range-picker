@@ -138,7 +138,8 @@
      *   TimeZoneIndependent (3)   the wall clock is stored as it is: the same
      *                             hand-over was held as `08:30:45Z`.
      *   DateOnly (2)              the day, at UTC midnight; the time is dropped.
-     *   absent (canvas)           no column: the instant, unchanged.
+     *   absent                    no column (a canvas app, the hub's demo): the
+     *                             instant, unchanged.
      *
      * What comes back as `raw` is what the server holds, as a Date — measured
      * equal to the Web API value on both behaviours — so this one function is
@@ -180,7 +181,70 @@
         return new Date(wall.getTime());
     }
 
+    /**
+     * What a canvas app hands a bound date property as `attributes`: a
+     * description of the manifest property, about no column.
+     *
+     * Read with a probe control on 6 October 2026 in a published canvas app,
+     * the same from a literal, a variable, a collection and a Dataverse row,
+     * in three time zones. `Behavior` and `Format` follow the property's
+     * declared type — `2` / `'date'` for `DateAndTime.DateOnly`, `3` /
+     * `'datetime'` for `DateAndTime.DateAndTime` — while `raw` is the true
+     * instant either way: **local** midnight for a day. `EntityLogicalName`
+     * is empty and `LogicalName` is the property's own name, which is how a
+     * control can tell this from a column. On a form the same members name
+     * the table and the column.
+     *
+     * This rig handed `undefined` here through 0.3.1, and the control passed
+     * against it while reading every canvas day from its UTC half.
+     */
+    function canvasAttributes(name, type) {
+        var timed = type === 'DateAndTime.DateAndTime';
+
+        return {
+            EntityLogicalName: '',
+            LogicalName: name,
+            DisplayName: name,
+            Type: 'datetime',
+            Format: timed ? 'datetime' : 'date',
+            Behavior: timed ? 3 : 2,
+            RequiredLevel: 0,
+            IsSecured: false,
+            SourceType: null,
+            DefaultValue: '',
+            ImeMode: 0,
+            MaxLength: 100,
+            MinValue: -100000000000,
+            MaxValue: 100000000000,
+            Precision: 2,
+            Options: null,
+        };
+    }
+
     var DEFAULTS = {
+        /*
+         * `'model-driven'` or `'canvas'`. A canvas app has no column: it
+         * ignores `behavior`, hands the value over as the true instant, and
+         * describes the property itself in `attributes` — see
+         * `canvasAttributes`. Its `getTimeZoneOffsetMinutes` is the browser's
+         * `getTimezoneOffset()`, the opposite sign to a form's.
+         */
+        host: 'model-driven',
+        /*
+         * The type a canvas app takes the bound properties to be. Both are a
+         * type group of the two date types, and Studio lists them as
+         * `DateTime` although `DateOnly` is named first (2026-10-06): so
+         * `Behavior: 3` and `Format: 'datetime'` for every binding, a plain
+         * `Date(2026, 10, 6)` included. 0.3.1 was watched in that app
+         * showing "10/6/2026 6:00 AM" for it at UTC-6 and "10/5/2026 10:00 PM"
+         * in Berlin — the UTC clock, with a time nobody asked for. The other
+         * value is kept so both placeholders stay under test.
+         */
+        canvasType: 'DateAndTime.DateAndTime',
+        /** The table and columns a form names in `attributes`. */
+        table: 'booking',
+        startColumn: 'startdate',
+        endColumn: 'enddate',
         /** The bound columns. `null` is a cleared column. */
         start: localDate(2026, 3, 2),
         end: localDate(2026, 3, 6),
@@ -226,7 +290,9 @@
          * hours of disagreement, and one at midnight can.
          */
         /*
-         * The bound columns' DateTimeFieldBehavior, or undefined for canvas.
+         * The bound columns' DateTimeFieldBehavior. `undefined` is a host that
+         * hands over no `attributes` at all — the hub's demo, `npm start` —
+         * and **not** a canvas app, which is `host: 'canvas'`.
          * Defaults to UserLocal because that is what a column nobody thought
          * about is, and it is the shape the control saw for its first four
          * releases.
@@ -270,8 +336,8 @@
      * A bound date column.
      *
      * `behavior` is the column's `DateTimeFieldBehavior`: 1 UserLocal,
-     * 2 DateOnly, 3 TimeZoneIndependent, undefined for canvas (no column at
-     * all). It decides the *shape of the value the platform hands over*, which
+     * 2 DateOnly, 3 TimeZoneIndependent, undefined for a host with no
+     * `attributes`. It decides the *shape of the value the platform hands over*, which
      * is the part no documentation states and which cost four releases to find:
      *
      *   UserLocal (1)  a real instant — local midnight for a day
@@ -282,7 +348,20 @@
      * the platform never produces — and a stub that can produce a shape the
      * platform cannot is worse than no stub.
      */
-    function property(value, security, error, message, behavior, format, userOffset) {
+    function property(value, security, error, message, behavior, format, userOffset, column) {
+        if (column.host === 'canvas') {
+            // No column: the maker's formula result, as the instant it is. What
+            // the host says about it follows the declared type, not the value.
+            return {
+                raw: store(value, undefined, format, userOffset),
+                security: { editable: true, readable: true, secured: false },
+                error: error,
+                errorMessage: error ? message : undefined,
+                type: column.canvasType,
+                attributes: canvasAttributes(column.name, column.canvasType),
+            };
+        }
+
         return {
             // The fixture supplies a wall clock; the platform holds whatever
             // its write would have made of it. See `store`.
@@ -292,10 +371,13 @@
             // The platform sets no message when there is no error.
             errorMessage: error ? message : undefined,
             type: format === 'datetime' ? 'DateAndTime.DateAndTime' : 'DateAndTime.DateOnly',
-            // Absent entirely on canvas, which is a state the control has to
-            // survive — not `{ Behavior: undefined }`. On a form the node
-            // carries fourteen keys; these are the two the control reads.
-            attributes: behavior === undefined ? undefined : { Behavior: behavior, Format: format },
+            // Absent entirely on a host that describes nothing, which is a
+            // state the control has to survive — not `{ Behavior: undefined }`.
+            // On a form the node carries fourteen keys; these are the ones the
+            // control reads, and the table's name is what says a column is there.
+            attributes: behavior === undefined
+                ? undefined
+                : { Behavior: behavior, Format: format, EntityLogicalName: column.table, LogicalName: column.column },
         };
     }
 
@@ -342,21 +424,34 @@
          * round; a number is the user's for every date, with the standard
          * offset an hour behind it.
          */
+        var canvas = o.host === 'canvas';
+
+        // A canvas app has no Dataverse user: it answers with the browser's
+        // own `getTimezoneOffset()`, minutes *behind* UTC, dated or not
+        // (360 at UTC-6, -120 in Berlin; measured 2026-10-06).
         var userOffset = function (date) {
+            if (canvas) {
+                return date.getTimezoneOffset();
+            }
+
             return o.userOffset === null ? -date.getTimezoneOffset() : o.userOffset;
         };
 
-        var standardOffset = o.userOffset === null
-            ? -new Date(2026, 0, 15).getTimezoneOffset()
-            : o.userOffset - 60;
+        var standardOffset = canvas
+            ? new Date().getTimezoneOffset()
+            : o.userOffset === null
+                ? -new Date(2026, 0, 15).getTimezoneOffset()
+                : o.userOffset - 60;
 
         var startFormat = o.startFormat || o.format;
         var endFormat = o.endFormat || o.format;
 
         return {
             parameters: {
-                startDate: property(o.start, o.startSecurity, o.startError, o.errorMessage, o.behavior, startFormat, userOffset),
-                endDate: property(o.end, o.endSecurity, o.endError, o.errorMessage, o.behavior, endFormat, userOffset),
+                startDate: property(o.start, o.startSecurity, o.startError, o.errorMessage, o.behavior, startFormat, userOffset,
+                    { host: o.host, canvasType: o.canvasType, name: 'startDate', table: o.table, column: o.startColumn }),
+                endDate: property(o.end, o.endSecurity, o.endError, o.errorMessage, o.behavior, endFormat, userOffset,
+                    { host: o.host, canvasType: o.canvasType, name: 'endDate', table: o.table, column: o.endColumn }),
                 minDate: { raw: o.min, type: 'DateAndTime.DateOnly' },
                 maxDate: { raw: o.max, type: 'DateAndTime.DateOnly' },
                 sameDay: { raw: o.sameDay, type: 'Enum' },

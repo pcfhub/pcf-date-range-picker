@@ -158,8 +158,10 @@ of the value you are handed:
 - `1` UserLocal — an instant. Local components are the day.
 - `2` DateOnly, `3` TimeZoneIndependent — the day itself, at UTC midnight. The
   **UTC** components are the day.
-- `0` or absent `attributes` (canvas) — no column to be wrong about; the
-  instant reading is the safe default.
+- `0`, absent `attributes`, or an `attributes` that names no table — no
+  column to be wrong about; the instant reading is the safe default. A canvas
+  app is the third of those, not the second, and states a `Behavior` all the
+  same: see *0.3.2* below.
 
 `dayFromPlatform` and `dayToPlatform` in `range.ts` are the whole fix, and they
 are deliberately the *only* two places that know: everything between them works
@@ -960,10 +962,8 @@ items below were not each measured individually and stay listed.
   control handles the pair either way; the portal may never produce it.
 - **The import message** (question 2). The probe went in as an upgrade of an
   installed solution and nothing was captured.
-- **A time on canvas.** `time: show` with no `attributes` and no user offset
-  reads the instant in the browser's clock, which is the only clock canvas
-  has. Whether a canvas `DateTime` property hands over what a Dataverse
-  column would, or what a Power Fx `Now()` would, is unmeasured.
+- **A time on canvas.** Measured for 0.3.2, and the premise here was wrong:
+  canvas does hand over `attributes`. See *0.3.2* below.
 - **A twelve-hour organisation end to end.** `formatTimeOfDay` is asserted
   against `h:mm tt`, the pattern measured on the live tenant, and the harness
   renders `8:30 AM` — but the box beside it is the browser's, in the
@@ -1023,8 +1023,85 @@ measurement that has to be true of the real popover is taken in `npm start`.
 - Tabster's guard timing is Fluent 9.46's. A later Fluent that inserts the
   guards already positioned makes the rule redundant, not wrong.
 
-## Still open
+## 0.3.2 — a canvas app states a behaviour for no column
 
+Every release through 0.3.1 assumed a canvas app hands a bound property no
+`attributes`; this file, the control's comments, its rig and the skill all
+said so. A probe control read a published canvas app on 6 October 2026
+(`.probe-kit/attributes-probe` beside this repository has the dumps): every
+bound property gets an `attributes` that describes the *property* — an empty
+`EntityLogicalName`, its own name as `LogicalName` — and a date property gets
+a `Behavior` and a `Format` with it, over a `raw` that is the true instant
+(local midnight for a day). It is the same from a literal, a variable, a
+collection and a Dataverse Date Only column.
+
+**For this control Studio lists both properties as `DateTime`**, although the
+type group names `DateOnly` first, so the placeholder is `Behavior: 3`,
+`Format: 'datetime'` for every binding. 0.3.1 believed both. Watched in a
+canvas app with the released 0.3.1 build, the same app read in three zones:
+
+| Bound to | Mexico City (UTC−6) | Berlin (UTC+2) | Tokyo (UTC+9) |
+| --- | --- | --- | --- |
+| `Date(2026, 10, 6)` … `Date(2026, 10, 9)` | 10/6/2026 6:00 AM – 10/9/2026 6:00 AM | 10/5/2026 10:00 PM – 10/8/2026 10:00 PM | 10/5/2026 3:00 PM – 10/8/2026 3:00 PM |
+| a Dataverse Date Only column, 20 Oct | 10/20/2026 6:00 AM | 10/19/2026 10:00 PM | 10/19/2026 3:00 PM |
+| `DateTimeValue("2026-10-06T23:30:00Z")`, `time: show` | 10/6/2026 11:30 PM | 10/6/2026 11:30 PM | 10/6/2026 11:30 PM |
+| the same, `time: auto` | 10/6/2026 11:30 PM | 10/6/2026 11:30 PM | 10/6/2026 11:30 PM |
+
+So: a time under `auto` although the docs said whole days; the **UTC** clock
+in every zone (that instant is 5:30 PM in Mexico City and 1:30 AM on the 7th
+in Berlin); and the day itself a day early east of UTC. From UTC−6 a plain
+date still names the right day, which is the only reason this lived through
+four releases written there.
+
+**The fix is one question, asked once**: `columnOf` in `index.ts` takes
+`attributes` as a column's only when `EntityLogicalName` names a table (it
+was `cll_loan` on a form for a date, a date-time, a text and a choice column,
+and empty for every property in canvas). `Behavior` and `Format` are read
+through it; with no column the value is an instant, `auto` shows no time, and
+the user-offset call is never made — in canvas it answers the browser's
+`getTimezoneOffset()`, the opposite sign to a form's, and would have been
+wrong too.
+
+**The rig was the reason nothing failed.** `dev/host.js` modelled canvas as
+`behavior: undefined`. It now has `host: 'canvas'` with the placeholder as
+read, and the suite asserts a canvas day in Mexico City, Berlin, Tokyo and
+Auckland by switching `TZ` inside the run. Against the 0.3.1 bundle the new
+assertions fail 11 of 109; against 0.3.2 none.
+
+**Watched in a canvas app with 0.3.2**, the same published app on 7 October
+2026, a fourth zone added:
+
+| Bound to | Mexico City (UTC−6) | Berlin (UTC+2) | Tokyo (UTC+9) | Auckland (UTC+13) |
+| --- | --- | --- | --- | --- |
+| `Date(2026, 10, 6)` … `Date(2026, 10, 9)` | 10/6/2026 – 10/9/2026 | the same | the same | the same |
+| a Dataverse Date Only column, 20 Oct | 10/20/2026 | 10/20/2026 | 10/20/2026 | 10/20/2026 |
+| `DateTimeValue("2026-10-06T23:30:00Z")`, `time: show` | 10/6/2026 5:30 PM | 10/7/2026 1:30 AM | 10/7/2026 8:30 AM | 10/7/2026 12:30 PM |
+| the same, `time: auto` | 10/6/2026 | 10/7/2026 | 10/7/2026 | 10/7/2026 |
+
+And a range picked in the player, 12 to 15 October, read back by a label as
+`Text(picker.startDate, "yyyy-mm-dd hh:mm")`: `2026-10-12 12:00 > 2026-10-15
+12:00` in all four zones — local midday of the day picked, as the suite
+asserts.
+
+**Getting the new build into the app took a save, not only a publish.** A
+published canvas app serves the bundle from its own package (the player
+fetched `PCFHub.DateRangePicker.bundle.js` from the app's runtime address,
+24,591 bytes while the environment's web resource was already 24,698), and
+Studio ran the new build in the editing session without marking the app
+changed: Save stayed disabled, and two publishes in that state left the player
+on 0.3.1. Importing the component again changed nothing either. An edit to any
+formula, then Save, then Publish, and the player served 24,694 bytes. Which of
+the last steps counts was not separated — the re-import came before the edit.
+
+### Not verified in 0.3.2
+
+- **A picked time read by a formula.** Only whole days were picked in the
+  player; the two time inputs under `time: show` were not typed into.
+- **Sources other than a literal and Dataverse.** A SharePoint, Excel or SQL
+  date was not bound. Nothing read so far depends on the source.
+- **A phone player.** Desktop browser only.
+
+## Still open
 Everything here is **Not verified** in the strict sense: read-correct against
 the real typings, compiled, and asserted as far as a rig without a browser can
 reach.

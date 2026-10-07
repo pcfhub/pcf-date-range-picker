@@ -13,6 +13,35 @@ import {
     validateRange,
 } from './range';
 
+/** The two members of a date column's `attributes` this control reads, and the one that says a column is there. */
+interface DateColumn {
+    Behavior?: number;
+    Format?: string;
+    EntityLogicalName?: unknown;
+}
+
+/**
+ * A bound date's column metadata, or `undefined` where no column stands
+ * behind the value.
+ *
+ * Both hosts hand over an `attributes`. A form's is the column's, and names
+ * its table in `EntityLogicalName`. A canvas app's describes the manifest
+ * property — `Behavior: 2` and `Format: 'date'` for a date-only property,
+ * `3` and `'datetime'` for a date-time one, whatever the formula produced —
+ * over a value that is the true instant, and names no table (read with a
+ * probe control, 6 October 2026; SPEC.md has the readings). Through 0.3.1
+ * this control believed it: a canvas day was read from its UTC half, a day
+ * early for every browser east of UTC. So a `Behavior` counts only where a
+ * table is named; everywhere else the value is an instant.
+ */
+function columnOf(property: ComponentFramework.PropertyTypes.DateTimeProperty): DateColumn | undefined {
+    const attributes = property.attributes as DateColumn | undefined;
+
+    return typeof attributes?.EntityLogicalName === 'string' && attributes.EntityLogicalName !== ''
+        ? attributes
+        : undefined;
+}
+
 /**
  * A virtual (React) field control over **two** bound columns.
  *
@@ -84,10 +113,11 @@ export class DateRangePicker implements ComponentFramework.ReactControl<IInputs,
          *
          * On a form the column says: `attributes.Format` is `'date'` or
          * `'datetime'`, lower-case, measured on both kinds. On canvas there is
-         * no column and no `attributes`, so the `time` input decides, and its
-         * default of `auto` means "whatever the column says, and nothing when
-         * nothing does" — a canvas maker who wants times says so. `show` and
-         * `hide` override the column either way.
+         * no column — its `Format` only repeats the property's declared type,
+         * see `columnOf` — so the `time` input decides, and its default of
+         * `auto` means "whatever the column says, and nothing when nothing
+         * does" — a canvas maker who wants times says so. `show` and `hide`
+         * override the column either way.
          */
         const timeMode = String(context.parameters.time.raw ?? 'auto');
 
@@ -100,17 +130,20 @@ export class DateRangePicker implements ComponentFramework.ReactControl<IInputs,
                 return false;
             }
 
-            return String(property.attributes?.Format ?? '').toLowerCase() === 'datetime';
+            return String(columnOf(property)?.Format ?? '').toLowerCase() === 'datetime';
         };
 
-        this.startShape = { behavior: start.attributes?.Behavior, hasTime: hasTime(start) };
-        this.endShape = { behavior: end.attributes?.Behavior, hasTime: hasTime(end) };
+        this.startShape = { behavior: columnOf(start)?.Behavior, hasTime: hasTime(start) };
+        this.endShape = { behavior: columnOf(end)?.Behavior, hasTime: hasTime(end) };
 
         /*
          * The Dataverse user's offset, for a UserLocal column carrying a time.
          * Typed as taking an optional date; the date is not optional here,
          * because the no-argument call answers the *standard* offset — measured
-         * `-360` on a day the dated call answered `-300`. Absent on canvas.
+         * `-360` on a day the dated call answered `-300`. A canvas app answers
+         * too, with the browser's own `getTimezoneOffset()` — the opposite sign
+         * — and it is never asked there: the offset is read for a UserLocal
+         * *column*, and canvas has none.
          */
         const offsetFor: OffsetFor = (date: Date): number | null => {
             const settings = context.userSettings as { getTimeZoneOffsetMinutes?: (d: Date) => number };

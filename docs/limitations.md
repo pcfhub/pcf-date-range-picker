@@ -14,6 +14,14 @@ order: 7
   which can differ by an hour or more. The box works in minutes; a column that
   already holds seconds keeps them until the time is changed.
 
+- **In a canvas app the clock is the device's, and a time has to be asked
+  for.** A canvas app has no Dataverse user time zone and no column to follow,
+  so dates and times are shown on the clock of the browser or phone the app
+  runs on. It also cannot tell the control whether a value is a date or a date
+  and time, so `time` left on `auto` means whole days there; set it to `show`
+  for a time box. Versions before 0.3.2 got both wrong in a canvas app — see
+  [Migration](migration).
+
 - **A Time Zone Independent column holds a wall clock, and so does the box.**
   Nothing is converted for that behaviour: 08:30 typed is 08:30 stored and
   08:30 shown to every user, wherever they are. That is what the behaviour is
