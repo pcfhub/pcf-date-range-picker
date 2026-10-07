@@ -90,19 +90,49 @@ if (problems.length > 0) {
      *
      * A repository that has not been through setup carries placeholders
      * everywhere. A repository that has carries them only where a human still
-     * has to write something — the README's three hand-written sections. Both
-     * are placeholders; telling the second one to run `npm run setup` sends
-     * somebody to re-run a script that will not help.
+     * has to write something — the README's three hand-written sections, and
+     * the summary in pcfhub.json. Both are placeholders; telling the second one
+     * to run `npm run setup` sends somebody to re-run a script that will not
+     * help.
+     *
+     * The summary is matched as the whole finding, not by its file: a
+     * pcfhub.json that has not been through setup carries a dozen other tokens
+     * and is the first case, not this one.
      */
-    const onlyProse = problems.every((problem) => problem.startsWith('README.md'));
+    const SUMMARY_UNWRITTEN = 'pcfhub.json still contains __SUMMARY__';
 
-    console.error(onlyProse
-        ? '\nThe README still has sections to write. Replace each placeholder with\n'
-            + 'prose, and delete the comment explaining what belongs there:\n'
-        : '\nThis repository is still the template. Run:\n\n  npm run setup\n');
+    const onlyProse = problems.every(
+        (problem) => problem.startsWith('README.md') || problem === SUMMARY_UNWRITTEN,
+    );
+
+    const readmeUnwritten = problems.some((problem) => problem.startsWith('README.md'));
+
+    if (!onlyProse) {
+        console.error('\nThis repository is still the template. Run:\n\n  npm run setup\n');
+    } else if (readmeUnwritten) {
+        console.error('\nThere is still prose only you can write. Replace each placeholder, and in\n'
+            + 'the README delete the comment explaining what belongs there:\n');
+    } else {
+        console.error('\nThe summary in pcfhub.json is still to write. Replace its placeholder:\n');
+    }
 
     for (const problem of problems) {
         console.error(`  ${problem}`);
+    }
+
+    /*
+     * Said here because nothing else in an adopted repository says it: the
+     * guide that documents the key is removed at adoption, and the hub's own
+     * validator is not asked until the placeholders are gone.
+     */
+    if (onlyProse && problems.includes(SUMMARY_UNWRITTEN)) {
+        console.error(
+            '\n  The summary is what the hub shows under "Overview" on the component page,\n'
+            + '  above the screenshots: what the control does, for somebody deciding whether\n'
+            + '  to install it. One or two paragraphs, 2,000 characters at most, written as a\n'
+            + '  JSON string with \\n\\n between blocks. The page renders paragraphs, "- "\n'
+            + '  lists, **bold** and `code`; a link or a heading is shown as typed.',
+        );
     }
 
     console.error('');
@@ -254,7 +284,9 @@ if (Array.isArray(manifest.hosts)) {
 // Still a light structural read: the manifest is matched, not parsed.
 
 const TYPES = ['field', 'dataset', 'virtual', 'grid_customizer'];
-const FRAMEWORKS = ['standard', 'react', 'react_virtual'];
+// The hub's Framework enum. A control that bundles its own React is
+// `standard` — there is no third value, and the hub rejects one.
+const FRAMEWORKS = ['standard', 'react_virtual'];
 
 const type = manifest.control?.type;
 const framework = manifest.control?.framework;
@@ -458,6 +490,104 @@ for (const controlDir of controlDirs) {
     }
 }
 
+// ------------------------------------------------------ the echo of a write
+//
+// A field control that writes its bound value and also writes the incoming
+// value back into its input has to tell the two apart. The platform hands
+// every write back as an `updateView`, late and **out of order** (typing "pase
+// laur" on a real form produced "pase laur", "pase lau", "pase laur", measured
+// 2026-09-13), so a guard comparing against the latest value alone takes a
+// late echo of an earlier keystroke as the form's change: what was typed after
+// it is lost and the caret jumps to the end. And PCFHub's demo re-renders with
+// the preset's value, which taken as news wipes a visitor's edit. Both
+// scaffolds carry the fix — a list of recent writes and the host's last value
+// — and on 2 Oct 2026 three shipped controls still did not (Copy Field 0.2.0,
+// Barcode Scanner 0.2.1, Code Editor 1.5.0), each a patch release found by
+// reading, not by this check.
+//
+// A warning, because it is a regex: it fires when the sources take typing (an
+// `input` listener, Monaco's content change, a React `onChange`), notify,
+// assign an `incoming` value into an input or an editor, and show neither
+// guard by the names the scaffolds and the catalogue use (`.includes(incoming)`,
+// `lastIncoming`, `EchoGuard`). Typing is the condition because the failure is
+// a late echo of an earlier *keystroke*: a control that writes once per
+// press or drop — pcf-geo-stamp, pcf-file-drop with its in-flight write — has
+// one echo to wait for, and both do.
+
+for (const controlDir of controlDirs) {
+    const relative = `${controlDir}/ControlManifest.Input.xml`;
+    const xml = readFileSync(join(root, relative), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+
+    if (!/usage="bound"/.test(xml) || /<data-set\b/.test(xml)) {
+        continue;
+    }
+
+    let sources = '';
+
+    for (const path of walk(join(root, controlDir))) {
+        if (/\.tsx?$/.test(path)) {
+            sources += readFileSync(path, 'utf8');
+        }
+    }
+
+    const typed = /addEventListener\(\s*['"](?:input|beforeinput)['"]|onDidChangeModelContent|onChange=\{/.test(sources);
+    const writes = /otifyOutputChanged\s*\(\s*\)/.test(sources);
+    const takesBack = /\.value\s*=\s*incoming\b|\.setValue\(\s*incoming\b/.test(sources);
+    const guarded = /\.includes\(\s*incoming\s*\)|\blastIncoming\b|\bEchoGuard\b/.test(sources);
+
+    if (typed && writes && takesBack && !guarded) {
+        warnings.push(
+            `${controlDir} writes its bound value and assigns the incoming value back into its input, with no ` +
+            'guard against the echo of its own writes. The platform echoes them late and out of order, so a late ' +
+            'echo of an earlier keystroke is taken as the form\'s change — what was typed after it is lost and the ' +
+            'caret jumps to the end — and the hub demo\'s re-render with the preset value wipes an edit. Keep a ' +
+            'list of recent writes and the host\'s last value, as the scaffold does; see "The caret, and what ' +
+            'actually moves it" in the skill\'s rendering-and-hosts.md.',
+        );
+    }
+}
+
+// ------------------------------------------------ a clear is null, not undefined
+//
+// `getOutputs()` hands back every bound property, and `refreshTypes` types each
+// one as optional — `value?: number` — so `this.value ?? undefined` compiles
+// cleanly and means the opposite of what a clear needs: `undefined` is "no
+// change". A canvas app honours that strictly and the column refuses to empty;
+// a model-driven form is more forgiving, so the bug hides on the host most
+// people test first. pcf-star-rating shipped it, and its clear button did
+// nothing in canvas. The fix is `null`, cast past the generated type.
+//
+// A warning, because it is a regex: it fires on `?? undefined` or
+// `|| undefined` inside a `getOutputs` body. A control with nothing to hand
+// back leaves the key out — `{}` — which says "no change" without spelling
+// `undefined`, and is never flagged.
+
+for (const controlDir of controlDirs) {
+    let sources = '';
+
+    for (const path of walk(join(root, controlDir))) {
+        if (/\.tsx?$/.test(path)) {
+            sources += `${readFileSync(path, 'utf8')}\n`;
+        }
+    }
+
+    // The body of every getOutputs, up to the first line that closes a member,
+    // with its comments gone: the controls that fixed this say why in a comment
+    // quoting the very pattern, and quoting it is not shipping it.
+    const bodies = [...sources.matchAll(/getOutputs\s*\([^)]*\)[^{]*\{([\s\S]*?)\n\s{0,4}\}/g)]
+        .map((m) => m[1].replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1'));
+
+    if (bodies.some((body) => /\?\?\s*undefined\b|\|\|\s*undefined\b/.test(body))) {
+        warnings.push(
+            `${controlDir}'s getOutputs() hands a bound value back as \`undefined\` when it is empty. To the platform ` +
+            '`undefined` is "no change", so a cleared column is never cleared — strictly in a canvas app, where the ' +
+            'field refuses to empty. Return `null` cast past the generated type, ' +
+            '`value === null ? (null as unknown as undefined) : value`; see "getOutputs() returns every bound ' +
+            'property" in the skill\'s SKILL.md.',
+        );
+    }
+}
+
 // ------------------------------------------------- external service usage
 //
 // Enabling this makes the control **premium**: every end user of an app that
@@ -518,6 +648,29 @@ if (exists(join(root, docsPath))) {
         problems.push(
             `${docsPath}/changelog.md is ignored — the hub builds the changelog from release notes.`,
         );
+    }
+
+    /*
+     * The migration page `npm run bump` writes is the template's, unfilled,
+     * and it says so — but only on the console of the bump. pcf-kanban-board
+     * 0.4.0's bump wrote one on a minor bump that broke nothing, `git add
+     * docs` took it into the commit, and this check passed it: tagged, the hub
+     * would have published "The breaking change, in one sentence." for 0.4.0.
+     * An unfilled page is refused here; fill it in or delete it.
+     */
+    const migration = join(root, docsPath, 'migration.md');
+
+    if (exists(migration)) {
+        const text = readFileSync(migration, 'utf8');
+        const unfilled = ['The breaking change, in one sentence.', 'The concrete step.']
+            .filter((line) => text.includes(line));
+
+        if (unfilled.length > 0) {
+            problems.push(
+                `${docsPath}/migration.md is the template's page, unfilled (${unfilled.map((line) => `"${line}"`).join(', ')}). ` +
+                    'Write what changed and what to do, or delete the page if nothing broke — the hub publishes it as it stands.',
+            );
+        }
     }
 } else {
     problems.push(`No ${docsPath}/ directory, so this component would publish with no documentation.`);
@@ -698,6 +851,44 @@ if (datasetFixture && !exists(join(root, datasetFixture))) {
     problems.push(
         `pcfhub.json names demo.datasetFixture as "${datasetFixture}", which does not exist.`,
     );
+} else if (datasetFixture) {
+    /*
+     * What the file must hold depends on who reads it — the hub's
+     * DemoFixtureShape, mirrored: a dataset control or a grid host indexes
+     * `columns` and `records`; any other control reads only the `dataverse`
+     * section, a stand-in Dataverse for the calls its demo makes (pcfhub's
+     * docs/demo-harness-dataverse.md, "Field controls", 2026-09-24), and the
+     * `services` list, canned answers for an external service it declares
+     * (docs/demo-harness-service-answers.md, 2026-09-29) — one or both. The
+     * hub refuses the wrong shape at ingestion and says so only on the run.
+     */
+    const needsRows = manifest.control?.type === 'dataset' || (manifest.demo?.host ?? 'form') === 'grid';
+    let fixture = null;
+
+    try {
+        fixture = JSON.parse(readFileSync(join(root, datasetFixture), 'utf8'));
+    } catch (error) {
+        problems.push(`demo.datasetFixture "${datasetFixture}" is not valid JSON: ${error.message}`);
+    }
+
+    const isObject = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
+
+    if (fixture !== null && !isObject(fixture)) {
+        problems.push(`demo.datasetFixture "${datasetFixture}" must be a JSON object.`);
+    } else if (fixture !== null && 'services' in fixture && !Array.isArray(fixture.services)) {
+        problems.push(`demo.datasetFixture "${datasetFixture}" must have services as an array of canned answers.`);
+    } else if (fixture !== null && needsRows) {
+        for (const key of ['columns', 'records']) {
+            if (!Array.isArray(fixture[key])) {
+                problems.push(`demo.datasetFixture "${datasetFixture}" must have a ${key} array — the hub reads it as rows for this control.`);
+            }
+        }
+    } else if (fixture !== null && !isObject(fixture.dataverse) && !Array.isArray(fixture.services)) {
+        problems.push(
+            `demo.datasetFixture "${datasetFixture}" must have a dataverse object or a services array — a ` +
+            'control without a dataset property reads nothing else from it.',
+        );
+    }
 }
 
 // ---------------------------------------------------------------- demo host
@@ -770,10 +961,11 @@ if (fidelity && fidelity !== 'none' && exists(join(root, 'out'))) {
  * The version, in every place the repository keeps one.
  *
  * `release-reusable.yml` already checks this — against every manifest in the
- * tree *and* against `Solution.xml` — but it does so on a Windows runner,
- * after the pack, on a tag that has already been pushed. So the failure mode
- * it produces is: delete the tag locally and remotely, fix, retag. That is the
- * same check, two seconds earlier, before any of that is possible.
+ * tree *and* against `Solution.xml` — and it runs first, before anything is
+ * installed or built, so it costs seconds rather than a pack. What it cannot
+ * avoid is that it runs on a tag that has already been pushed. So the failure
+ * mode it produces is: delete the tag locally and remotely, fix, retag. This
+ * is the same check, before the tag exists.
  *
  * A failure rather than a warning, because a disagreement has no benign
  * reading: one of the three files was edited and the others were not, and

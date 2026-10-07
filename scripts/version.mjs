@@ -41,6 +41,15 @@
  *     npm run bump -- 0.6.0                 set all of them
  *     npm run bump -- --minor               bump, from the agreed current version
  *     npm run bump -- --patch --dry-run
+ *     npm run bump -- 0.0.1 --allow-lower   below the current version — only
+ *                                           for a control nothing has imported
+ *
+ * **`--allow-lower` exists for one moment in a control's life**: a new
+ * repository starts at the template's 0.1.0, and its probe builds belong
+ * *below* the release number (0.0.1, 0.0.2 …) so that 0.1.0 stays free for the
+ * first real release. Once any environment has imported a build, a lower
+ * number is an upgrade Dataverse ignores — which is why the flag is explicit
+ * rather than inferred from "no tags yet": a probe is imported untagged.
  *
  * **On PowerShell, call the script directly instead**:
  *
@@ -71,6 +80,7 @@
  * reason.
  */
 
+import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -91,6 +101,7 @@ const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/;
 
 const argv = process.argv.slice(2);
 const dryRun = argv.includes('--dry-run');
+const allowLower = argv.includes('--allow-lower');
 
 /*
  * `--into <path>` so the template can run this against an adopted repository,
@@ -107,13 +118,13 @@ if (intoAt !== -1 && !argv[intoAt + 1]) {
 }
 
 const rest = intoAt === -1 ? argv : [...argv.slice(0, intoAt), ...argv.slice(intoAt + 2)];
-const flags = rest.filter((arg) => arg.startsWith('--') && arg !== '--dry-run');
+const flags = rest.filter((arg) => arg.startsWith('--') && arg !== '--dry-run' && arg !== '--allow-lower');
 const positional = rest.filter((arg) => !arg.startsWith('--'));
 
 const BUMPS = { '--major': 0, '--minor': 1, '--patch': 2 };
 
 if (flags.some((flag) => !(flag in BUMPS))) {
-    fail(`Unknown flag ${flags.find((flag) => !(flag in BUMPS))}. Use --major, --minor, --patch or --dry-run.`);
+    fail(`Unknown flag ${flags.find((flag) => !(flag in BUMPS))}. Use --major, --minor, --patch, --dry-run or --allow-lower.`);
 }
 
 if (flags.length > 1) {
@@ -193,10 +204,11 @@ if (agreed !== null && next === agreed) {
     fail(`Already at ${next}.`);
 }
 
-if (agreed !== null && !isAhead(next, agreed)) {
+if (agreed !== null && !isAhead(next, agreed) && !allowLower) {
     fail(
         `${next} is not ahead of ${agreed}. Dataverse compares solution versions on import, ` +
-        'and an upgrade that is not ahead does nothing.',
+        'and an upgrade that is not ahead does nothing.\n' +
+        "  For a control no environment has imported yet — a new repository's probe — pass --allow-lower.",
     );
 }
 
@@ -215,7 +227,9 @@ for (const location of locations) {
     console.log(`  ${dryRun ? 'would set' : 'set'}  ${rel(location.path).padEnd(52)} ${location.version} → ${next}`);
 }
 
+syncLocks();
 migrationPage();
+limitationsPage();
 
 console.log(
     dryRun
@@ -236,9 +250,9 @@ function collect() {
             /*
              * Every package.json in the tree, not just the root one:
              * `add-control.mjs` writes one per control project, and CI does
-             * not check those at all. package-lock.json is deliberately left
-             * alone — npm rewrites it, and a hand-edited lock is worse than a
-             * stale one.
+             * not check those at all. Its package-lock.json is not a location
+             * — nothing reads a version from it — but `syncLocks` sets its
+             * own two version fields beside it; see there for why.
              */
             found.push({
                 path,
@@ -284,6 +298,60 @@ function collect() {
     }
 
     return found.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+/**
+ * The lock's own `version` and `packages[""].version`, beside each
+ * package.json — those two fields and nothing else.
+ *
+ * This used to be left alone, on the reasoning that npm rewrites the lock and
+ * a hand-edited one is worse than a stale one. The first half is the problem:
+ * the solution pack's `/restore` runs npm, which rewrites exactly these two
+ * fields, so every pack after a bump left the tree dirty — Code-Editor-PCF
+ * 1.4.9 (2026-10-01), and pcf-data-table synced its lock to 0.7.0 in a commit
+ * *after* the tag (2026-09-27). Writing the two fields npm would write, from
+ * a parse, in npm's own format, is not a hand edit of the dependency tree; a
+ * lock that does not parse is left as it is.
+ */
+function syncLocks() {
+    for (const location of locations.filter((l) => basename(l.path) === 'package.json')) {
+        const lock = join(dirname(location.path), 'package-lock.json');
+
+        if (!existsSync(lock)) {
+            continue;
+        }
+
+        const before = readFileSync(lock, 'utf8');
+        let parsed;
+
+        try {
+            parsed = JSON.parse(before);
+        } catch {
+            console.log(`  left ${rel(lock)} as it is: it does not parse`);
+            continue;
+        }
+
+        if (parsed.version !== undefined) {
+            parsed.version = next;
+        }
+        if (parsed.packages && parsed.packages[''] && parsed.packages[''].version !== undefined) {
+            parsed.packages[''].version = next;
+        }
+
+        const indent = /^\{\r?\n(\s+)"/.exec(before)?.[1] ?? '  ';
+        const newline = before.includes('\r\n') ? '\r\n' : '\n';
+        const after = JSON.stringify(parsed, null, indent).replace(/\n/g, newline) + (before.endsWith('\n') ? newline : '');
+
+        if (after === before) {
+            continue;
+        }
+
+        if (!dryRun) {
+            writeFileSync(lock, after);
+        }
+
+        console.log(`  ${dryRun ? 'would set' : 'set'}  ${rel(lock).padEnd(52)} its own two version fields → ${next}`);
+    }
 }
 
 /**
@@ -377,6 +445,16 @@ function isAhead(next, current) {
  * page when the number suggests it, says so, and never overwrites one that is
  * already there.
  */
+/** Whether any `v*` tag exists — i.e. whether this control has been released. */
+function hasReleaseTag() {
+    try {
+        return execFileSync('git', ['tag', '--list', 'v*'], { cwd: root, encoding: 'utf8' }).trim() !== '';
+    } catch {
+        // Not a git checkout, or no git: say nothing rather than guess.
+        return false;
+    }
+}
+
 function migrationPage() {
     const donor = join(root, 'scripts', 'templates', 'migration.md');
     const page = join(root, 'docs', 'migration.md');
@@ -404,6 +482,14 @@ function migrationPage() {
         return;
     }
 
+    // A first release has nobody to migrate: 0.0.x probes were never tagged,
+    // and 0.0.4 → 0.1.0 is a "breaking" 0.x minor by the rule above, so
+    // pcf-input-mask's first release was handed a migration page for makers
+    // who could not exist. No release tag yet means no page.
+    if (!hasReleaseTag()) {
+        return;
+    }
+
     if (!dryRun) {
         writeFileSync(page, readFileSync(donor, 'utf8').replace(/__VERSION__/g, next));
     }
@@ -412,6 +498,30 @@ function migrationPage() {
         `\n  ${dryRun ? 'would write' : 'wrote'} docs/migration.md, pinned appliesTo ">=${next}".\n` +
         '  Fill it in or delete it — an unedited migration page is worse than none,\n' +
         '  and the hub publishes whatever is on the default branch.',
+    );
+}
+
+/**
+ * Name `docs/limitations.md` at the one moment it is most likely to be wrong.
+ *
+ * A release is usually picked off that page, and the hub publishes it from the
+ * default branch — so a gap the release closes stays on the component page,
+ * beside notes saying the opposite, until someone deletes the line.
+ * `pcf-data-table` 0.6.19 shipped grouping with its page still saying "No
+ * grouping and no aggregate row".
+ *
+ * A reminder rather than a check: which lines a release closes is a reading of
+ * the notes against the page, and nothing here can do that reading.
+ */
+function limitationsPage() {
+    if (!existsSync(join(root, 'docs', 'limitations.md'))) {
+        return;
+    }
+
+    console.log(
+        '\n  Reread docs/limitations.md for what this release closes: delete each gap it\n' +
+        '  no longer has, write the new feature\'s own limits, and commit it with the bump.\n' +
+        '  The hub publishes that page from the default branch.',
     );
 }
 
