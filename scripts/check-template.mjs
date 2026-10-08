@@ -13,6 +13,7 @@
  * here would drift, then disagree, and the one nothing executes always loses.
  */
 
+import { execFileSync } from 'node:child_process';
 import { closeSync, openSync, readdirSync, readFileSync, readSync, statSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,8 +26,11 @@ const SKIP_DIRS = new Set(['.git', 'node_modules', 'out', 'bin', 'obj', 'generat
 // placeholders" — they are the things that remove them. setup.mjs deletes
 // adopt.mjs on adoption, but a repo may still be mid-flight when this runs.
 // `scripts/templates/` holds donor pages that `version.mjs` writes when a
-// release needs one — they carry `__VERSION__` for the same reason the
-// adoption scripts carry `DateRangePicker`: they are the thing that fills it in.
+// release needs one — they carry the version token for the same reason the
+// adoption scripts carry the control-name token: they are the thing that
+// fills it in. (Named in words, not spelled: setup.mjs substitutes every
+// token in every file it adopts, comments included, and this sentence came
+// out of it as "the adoption scripts carry `CopyField`".)
 const SKIP_PATHS = new Set([
     'scripts/setup.mjs', 'scripts/adopt.mjs', 'scripts/add-control.mjs', 'scripts/check-template.mjs',
     'scripts/version.mjs', 'scripts/release.mjs', 'scripts/templates/migration.md',
@@ -1083,6 +1087,31 @@ if (exists(controlsOut)) {
                 'externalised or lazy-loaded. (This is likely the development bundle; confirm against a pack.)',
             );
         }
+    }
+}
+
+/*
+ * Whether this file — and the rest of the shared tooling — is behind the
+ * template. A stale copy of these checks is the one thing a green run here
+ * cannot report on its own, because it *is* the checks: on 2026-10-08, 25 of
+ * 31 repositories carried an out-of-date copy and every one of them passed.
+ *
+ * Only with a sibling `../_template` that has `sync-rig.mjs`, and never in
+ * the template itself. CI has no sibling, so CI stays silent. A warning, never
+ * a failure: being behind is a chore, not a defect in the control.
+ */
+const siblingTemplate = resolve(root, '..', '_template');
+const syncRig = join(siblingTemplate, 'scripts', 'sync-rig.mjs');
+
+if (siblingTemplate !== root && exists(syncRig)) {
+    try {
+        const line = execFileSync(process.execPath, [syncRig, '--status', root], { encoding: 'utf8', timeout: 60000 }).trim();
+
+        if (line !== '' && line !== 'shared tooling: current') {
+            warnings.push(line);
+        }
+    } catch (error) {
+        warnings.push(`shared tooling: not compared with ../_template (${String(error.message).split(/\r?\n/)[0]})`);
     }
 }
 
