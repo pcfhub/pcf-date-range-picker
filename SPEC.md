@@ -1101,6 +1101,27 @@ the last steps counts was not separated — the re-import came before the edit.
   date was not bound. Nothing read so far depends on the source.
 - **A phone player.** Desktop browser only.
 
+## 0.3.4 — a popover left open over the header
+
+pcf-lookup-search 0.3.0 was reported with its list riding up over the form's
+header after the form scrolled. This popover is portalled the same way.
+Measured on the test form, 2026-10-14, on 0.3.1: the popover open, a scroll
+that put the field at y 221 (the form's scroller starts at 286) left the
+popover open, drawn from 253, over the tabs and header, flagged
+`data-popper-reference-hidden`.
+
+The shared `lib/close-when-hidden` closes it once less than half the field is
+visible, and the first build (0.3.3, imported to the test environment only)
+found the second half of the problem: the popover closed, Fluent's
+`trapFocus` handed focus back to the field, and focusing it scrolled the form
+from scrollTop 491 back to 269 — the user's scroll undone. 0.3.4 focuses the
+field itself first, with `preventScroll`, so there is nothing to restore.
+Walked on 0.3.4 at 1100×650: a 60px scroll kept the popover; the scroll that
+put the field at 230 closed it, the form stayed at 491, focus was on the
+field, and the record was not dirty. An abandoned first click is dropped with
+the close, as on Escape. **0.3.3 was never released**; the tag goes from 0.3.2
+to 0.3.4.
+
 ## Still open
 Everything here is **Not verified** in the strict sense: read-correct against
 the real typings, compiled, and asserted as far as a rig without a browser can

@@ -18,3 +18,8 @@
 
 *.pcfproj.user
 *.cdsproj.user
+
+# release notes, drafted by scripts/release.mjs and rewritten by hand.
+# Not committed: the tag message is where these live, and a stale copy in the
+# tree reads as the current release's notes when it is the previous one's.
+/.release-notes.md

@@ -23,6 +23,7 @@ import {
 import { CalendarLocale, PresetToken } from '../calendar';
 import { PresetRail } from './PresetRail';
 import { RangeCalendar } from './RangeCalendar';
+import { useCloseWhenHidden } from '../lib/close-when-hidden/useCloseWhenHidden';
 
 export interface IProps {
     startDate: Date | null;
@@ -102,6 +103,15 @@ export function DateRangePickerControl(props: IProps): React.ReactElement | null
      * open.
      */
     const [fieldEl, setFieldEl] = React.useState<HTMLButtonElement | null>(null);
+
+    // Close the popover once the field scrolls out of the form: it is
+    // portalled and follows the field up over the form's header
+    // (lib/close-when-hidden/watch.ts). An abandoned first click goes with it,
+    // as on any other close.
+    useCloseWhenHidden(fieldEl, open, () => {
+        setOpen(false);
+        setAnchor(null);
+    });
 
     const months = useMonths();
 
