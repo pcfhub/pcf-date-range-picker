@@ -1122,7 +1122,7 @@ field, and the record was not dirty. An abandoned first click is dropped with
 the close, as on Escape. **0.3.3 was never released**; the tag goes from 0.3.2
 to 0.3.4.
 
-## 0.4.0 — ranges of your own, bounds that move, a month and year jump
+## 0.4.0 and 0.4.1 — ranges of your own, bounds that move, a month and year jump
 
 Picked by the thirtieth demand survey (29 October 2026). Over twelve days on the
 hub this control was the steadiest climber (21 → 24 → 25 downloads, fourth
@@ -1186,7 +1186,7 @@ for it, and `default-value` is applied only when a maker configures the
 property. So `null` has to mean the default, and `fiscalSetting` reads it that
 way. A mutation that read `null` as January fails five assertions.
 
-### What 0.4.0 built
+### What 0.4.0 built (0.4.1 adds W5's fix, below)
 
 **`calendar.ts`**
 - **The quick-range grammar.** The tokens are `today`; `lastN` and `nextN`
@@ -1264,9 +1264,33 @@ Driven with real keys in headless Chrome on the harness:
 - The month-and-year view has the day grids' size at 760px wide.
 - At 375px the rail is chips and the view fills the width under them.
 
-### Not verified in 0.4.0
+### Walkthrough on the form — and 0.4.1
 
-- **The form walkthrough.** It comes next.
+0.4.0 went onto the test form's Date Only pair. The pair was configured with
+`today,lastWeek,last90,thisQuarter,lastFiscalQuarter,thisFiscalQuarter,fiscalYearToDate,thisFiscalYear,next14`,
+`minDays` `-30`, `maxDays` `90` and `fiscalYearStart` unset. The organisation's
+fiscal start was still 1 April.
+
+| # | On the form | Answer |
+| --- | --- | --- |
+| W1 | Open the popover | The rail in canonical order, with English labels. The fiscal ranges were already active when it drew. **One** `GET …/v9.0/organizations?$select=fiscalcalendarstart → 200` for the whole form (the two Date and Time pickers list no fiscal range). |
+| W2 | **This fiscal year** | The typed boxes proposed 2026-04-01 → 2027-03-31, so the April start reached the control. The bound refused it ("That date is earlier than this range allows."), and both columns stayed empty. |
+| W3 | **This fiscal quarter** | Written: `getValue()` read 1 October and 31 December. The field showed 10/1/2026 – 12/31/2026. **This quarter** showed as pressed too: April quarters line up with calendar quarters. |
+| W4 | Month heading, real Enter | The view opened with focus on October 2026. January to August were disabled (none of their days is on or after 29 September). |
+| W5 | ← then Page Down | **Failed on 0.4.0.** Focus was on September 2027, a month outside the 90-day bound. React reuses the twelve buttons for the new year, so the focused one turned `disabled` and Chrome blurred it to `BODY` two frames later: this session's busy-button finding, in this control's own new code. **0.4.1** makes an out-of-bounds month `aria-disabled` and refuses its pick. Re-walked on 0.4.1: focus stayed on September 2027 (`aria-disabled="true"`, focusable), and Enter there did nothing. |
+| W6 | Page Up, Enter on September 2026 | The window moved to September with focus on the 29th, the focused day carried over. The 28th was disabled and the 29th enabled (today − 30). |
+| W7 | Heading, Enter, Escape | The month view closed and **Fluent's real popover stayed open**, with focus on the heading. |
+
+The record was never saved. The reload that brought 0.4.1 discarded W3's
+write, and the form read *Saved* throughout.
+
+**0.4.0 was never released.** It is the build the walkthrough found W5 in,
+and a re-import at the same number left the web resource unchanged, so the
+fix needed a new number. The tag goes from 0.3.4 to 0.4.1, as 0.3.2 went to
+0.3.4.
+
+### Not verified in 0.4.1
+
 - **The designer accepting `-30`** (question 3).
 - **A user without System Administrator reading the organisation row**
   (question 1). A refusal gives January, which is the documented fallback,

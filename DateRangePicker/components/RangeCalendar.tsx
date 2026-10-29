@@ -565,8 +565,22 @@ export function RangeCalendar(props: IRangeCalendarProps): React.ReactElement {
                                             tabIndex={month === state.focus ? 0 : -1}
                                             aria-label={`${props.locale.monthNames[month]} ${year}`}
                                             aria-selected={current}
-                                            disabled={!enabled}
-                                            onClick={(): void => pickMonth(year, month)}
+                                            /*
+                                              aria-disabled, never `disabled`. Page Down
+                                              re-renders the twelve buttons for the next
+                                              year, and the one holding focus can turn out
+                                              of bounds: disabled under the focus, it was
+                                              blurred to the page body — measured on the
+                                              form, 2026-10-29, September 2027 under a
+                                              90-day bound. The keyboard walks through
+                                              such a month; a pick of it does nothing.
+                                            */
+                                            aria-disabled={!enabled || undefined}
+                                            onClick={(): void => {
+                                                if (enabled) {
+                                                    pickMonth(year, month);
+                                                }
+                                            }}
                                         >
                                             {props.locale.abbreviatedMonthNames[month]}
                                         </button>
