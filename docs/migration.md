@@ -7,7 +7,7 @@ appliesTo: ">=0.2.0"
 
 # Migration
 
-## 0.3.x → 0.4.0
+## 0.3.x → 0.4.1
 
 **Nothing to do.** Every 0.3.x property keeps its name, type and default, and
 a quick-range rail configured before keeps its buttons in the same order.

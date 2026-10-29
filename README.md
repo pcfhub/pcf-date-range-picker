@@ -93,7 +93,7 @@ dropped rather than thrown — the property is text and a canvas formula can put
 anything in it, so a typo should cost one button rather than the control.
 
 The fiscal ranges count from `fiscalYearStart`. With `org` (the default, and
-what a control placed before 0.4.0 gets — the platform hands such a control
+what a control placed before 0.4.1 gets — the platform hands such a control
 `null`, not the declared default) the control reads
 `organization.fiscalcalendarstart` once through `context.webAPI`, taking the
 month in the Dataverse user's zone, because the column is User Local behind a

@@ -73,7 +73,7 @@ old names needs re-binding.
 
 ## Can I add my own quick range?
 
-From the list, yes. Since 0.4.0 it has any number of days back or ahead
+From the list, yes. Since 0.4.1 it has any number of days back or ahead
 (`last90`, `next14`, any count up to 366), weeks, quarters, years, *to date*
 ranges and the fiscal year. The [API reference](api) has every token. Set
 **Quick ranges** to the comma-separated list you want, in any order, or to an
@@ -91,7 +91,7 @@ organisation to ask and the fiscal year otherwise starts in January.
 
 ## Can the bounds move with the date?
 
-Yes, since 0.4.0. **Earliest, in days from today** and **Latest, in days from
+Yes, since 0.4.1. **Earliest, in days from today** and **Latest, in days from
 today** take a number of days, negative for the past: `-30` and `90` allow
 the last thirty days through the next ninety. They combine with the fixed
 **Earliest date** and **Latest date**, and the tighter of each pair applies.

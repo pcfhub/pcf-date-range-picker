@@ -72,7 +72,7 @@ range ends today. `presets` takes a comma-separated list of these tokens:
 
 Tokens outside that list are ignored, and an empty list hides the rail. The
 order shown is the order of the table, not the order typed, so two
-configurations of the same set look the same. A rail configured before 0.4.0
+configurations of the same set look the same. A rail configured before 0.4.1
 looks exactly as it did.
 
 **`fiscalYearStart` says where the fiscal ranges count from.** A month (`jan`

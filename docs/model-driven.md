@@ -53,7 +53,7 @@ range genuinely is two columns, and this is how you say which one holds the end.
 The fiscal quick ranges (**This fiscal year**, **Last fiscal quarter**, …)
 count from the organisation's **Fiscal Year Settings** when **Fiscal year starts
 in** is left on *Organization setting*. That is the default, and it is also
-what a control placed before 0.4.0 gets.
+what a control placed before 0.4.1 gets.
 
 - **One Web API request, only when needed.** The control reads the start month
   from the organisation row once, and only when a fiscal range is listed in
