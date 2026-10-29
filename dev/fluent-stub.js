@@ -465,11 +465,115 @@
         );
     }
 
+    /*
+     * `Combobox` and `Option`, from pcf-address-autocomplete-azure's own copy
+     * of this file — compound like `Popover`: the parent reads its children for
+     * `Option`s. What it does *less* than Fluent's: no portal (the listbox is
+     * inline, under the input), no arrow-key walk through the options, no
+     * `aria-activedescendant`, no type-to-filter of its own. What it does the
+     * same: a controlled `value` through `onChange`, `open` through
+     * `onOpenChange`, a click on an option through
+     * `onOptionSelect({}, { optionValue })`, and non-option children rendered
+     * as they are inside the listbox — a notice row shows up that way.
+     * `expandIcon={null}` is honoured by drawing no chevron.
+     */
+    function Option(props) {
+        return React.createElement(
+            'div',
+            {
+                role: 'option',
+                className: 'fui-Option',
+                'data-value': props.value,
+                'aria-selected': 'false',
+                style: { padding: '6px 12px', cursor: 'pointer' },
+                onClick: props.__harnessSelect
+                    ? function () {
+                        props.__harnessSelect(props.value, props.text);
+                    }
+                    : undefined,
+            },
+            props.children,
+        );
+    }
+
+    Option.__harnessRole = 'option';
+
+    function Combobox(props) {
+        var select = function (value, text) {
+            if (props.onOptionSelect) {
+                props.onOptionSelect({}, { optionValue: value, optionText: text, selectedOptions: [value] });
+            }
+        };
+
+        var items = React.Children.map(props.children, function (child) {
+            if (child && child.type && child.type.__harnessRole === 'option') {
+                return React.cloneElement(child, { __harnessSelect: select });
+            }
+
+            return child;
+        });
+
+        var listboxProps = props.listbox || {};
+
+        return React.createElement(
+            'div',
+            { className: props.className, style: { position: 'relative', flex: '1 1 auto', minWidth: 0 } },
+            React.createElement('input', {
+                type: 'text',
+                role: 'combobox',
+                className: 'fui-Combobox-input',
+                value: props.value,
+                placeholder: props.placeholder,
+                disabled: props.disabled,
+                'aria-label': props['aria-label'],
+                'aria-invalid': props['aria-invalid'] ? 'true' : undefined,
+                'aria-describedby': props['aria-describedby'],
+                'aria-expanded': props.open ? 'true' : 'false',
+                'aria-busy': props['aria-busy'] ? 'true' : undefined,
+                'aria-autocomplete': 'list',
+                autoComplete: 'off',
+                style: { width: '100%', boxSizing: 'border-box', border: 'none', background: 'transparent', font: 'inherit', padding: '5px 4px', outline: 'none' },
+                onChange: props.onChange,
+                onFocus: function () {
+                    if (props.onOpenChange) {
+                        props.onOpenChange({}, { open: true });
+                    }
+                },
+            }),
+            props.open
+                ? React.createElement(
+                    'div',
+                    {
+                        role: 'listbox',
+                        className: listboxProps.className,
+                        style: {
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            top: '100%',
+                            zIndex: 1,
+                            marginTop: '4px',
+                            padding: '4px 0',
+                            background: 'var(--colorNeutralBackground1, #ffffff)',
+                            border: '1px solid var(--colorNeutralStroke1, #d1d1d1)',
+                            borderRadius: '4px',
+                            boxShadow: '0 8px 16px rgba(0,0,0,.14), 0 0 2px rgba(0,0,0,.12)',
+                            overflowY: 'auto',
+                        },
+                    },
+                    items,
+                )
+                : null,
+        );
+    }
+
     global.__harnessFluent = {
         FluentProvider: FluentProvider,
         Popover: Popover,
         PopoverTrigger: PopoverTrigger,
         PopoverSurface: PopoverSurface,
+        Combobox: Combobox,
+        Option: Option,
         Button: Button,
         Spinner: Spinner,
         Avatar: Avatar,
