@@ -7,6 +7,19 @@ appliesTo: ">=0.2.0"
 
 # Migration
 
+## 0.3.x → 0.4.0
+
+**Nothing to do.** Every 0.3.x property keeps its name, type and default, and
+a quick-range rail configured before keeps its buttons in the same order.
+`last7`, `last30`, `next7` and `next30` still work, now as instances of
+`lastN` and `nextN`.
+
+Three properties are new, and a control already on a form gets them unset:
+**Earliest, in days from today** and **Latest, in days from today** (no bound),
+and **Fiscal year starts in** (the organisation's setting). The control asks
+the Web API for the organisation's fiscal start only when a fiscal range is
+listed. A rail without one makes no request, as before.
+
 ## 0.3.0 or 0.3.1 → 0.3.2
 
 **On a model-driven form: nothing to do, and nothing changes.**

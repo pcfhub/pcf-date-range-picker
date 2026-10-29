@@ -59,8 +59,25 @@ next quarter would otherwise open on a month in which every day is disabled.
 | Quick ranges | `next7,next30,nextMonth` |
 
 :::callout{type=info}
-In a canvas app these bounds can be formulas — `Today()` and
-`DateAdd(Today(), 90, TimeUnit.Days)`. On a model-driven form they are fixed
-dates set by the maker, so a rolling window is better expressed with a business
-rule.
+For a window that moves with the date, use the two *days from today* bounds
+instead (next example). In a canvas app either kind can also be a formula, such
+as `DateAdd(Today(), 90, TimeUnit.Days)`.
 :::
+
+## A reporting period, by fiscal quarter, within the last year
+
+A report filter that should offer the organisation's own fiscal periods, and
+never reach further back than a year or past today.
+
+| Property | Value |
+| --- | --- |
+| Start date | the period start column |
+| End date | the period end column |
+| Earliest, in days from today | `-365` |
+| Latest, in days from today | `0` |
+| Fiscal year starts in | *Organization setting* |
+| Quick ranges | `lastFiscalQuarter,thisFiscalQuarter,fiscalYearToDate,lastFiscalYear,last90` |
+
+**Last fiscal year** reaches further back than 365 days from late in the year,
+so on those days its button sets a range the bounds then refuse. That is the
+bounds doing their job, and a reason to list only the ranges the bounds allow.

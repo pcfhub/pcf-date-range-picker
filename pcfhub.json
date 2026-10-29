@@ -1,16 +1,27 @@
 {
     "schemaVersion": 1,
-
     "slug": "pcf-date-range-picker",
     "name": "Date Range Picker",
     "tagline": "Pick a start and end date — with times, on a Date and Time column — as one range, on a two-month calendar.",
     "summary": "One field for a start date and an end date. Open it and a two-month calendar appears: click the first day, click the last, and both dates are written to their own Dataverse columns.\n\n- Quick ranges such as the last 7 days, this month or next month, chosen by the maker\n- Reads each column's behaviour, so users in different time zones see the day they picked\n- On Date and Time columns, a time for each end of the range",
     "category": "input",
-    "hosts": ["canvas", "model-driven"],
-    "tags": ["date", "time", "datetime", "range", "calendar", "picker", "validation", "react", "fluent"],
+    "hosts": [
+        "canvas",
+        "model-driven"
+    ],
+    "tags": [
+        "date",
+        "time",
+        "datetime",
+        "range",
+        "calendar",
+        "picker",
+        "validation",
+        "react",
+        "fluent"
+    ],
     "supportLevel": "reference",
     "builtWith": "ai",
-
     "control": {
         "namespace": "PCFHub",
         "constructor": "DateRangePicker",
@@ -18,26 +29,27 @@
         "framework": "react_virtual",
         "manifestPath": "DateRangePicker/ControlManifest.Input.xml"
     },
-
     "links": {
         "homepage": "https://github.com/pcfhub/pcf-date-range-picker",
         "support": "https://github.com/pcfhub/pcf-date-range-picker/issues",
         "license": "MIT"
     },
-
     "docs": {
         "path": "docs"
     },
-
     "media": {
         "logo": "media/logo.png",
-        "screenshots": ["media/screenshot.png", "media/screenshot-times.png"]
+        "screenshots": [
+            "media/screenshot.png",
+            "media/screenshot-times.png"
+        ]
     },
-
     "demo": {
         "fidelity": "full",
         "bundle": "out/controls/DateRangePicker/bundle.js",
-        "styles": ["out/controls/DateRangePicker/css/DateRangePicker.css"],
+        "styles": [
+            "out/controls/DateRangePicker/css/DateRangePicker.css"
+        ],
         "presets": [
             {
                 "slug": "default",
@@ -51,7 +63,10 @@
                     "sameDay": "allow",
                     "duration": "show",
                     "time": "auto",
-                    "presets": "today,last7,last30,thisMonth,next7,next30"
+                    "presets": "today,last7,last30,thisMonth,next7,next30",
+                    "minDays": null,
+                    "maxDays": null,
+                    "fiscalYearStart": "jan"
                 },
                 "isDefault": true
             },
@@ -67,7 +82,10 @@
                     "sameDay": "allow",
                     "duration": "show",
                     "time": "show",
-                    "presets": "today,last7,thisMonth"
+                    "presets": "today,last7,thisMonth",
+                    "minDays": null,
+                    "maxDays": null,
+                    "fiscalYearStart": "jan"
                 }
             },
             {
@@ -82,7 +100,10 @@
                     "sameDay": "allow",
                     "duration": "show",
                     "time": "auto",
-                    "presets": ""
+                    "presets": "",
+                    "minDays": null,
+                    "maxDays": null,
+                    "fiscalYearStart": "jan"
                 }
             },
             {
@@ -97,7 +118,10 @@
                     "sameDay": "allow",
                     "duration": "show",
                     "time": "auto",
-                    "presets": "today,thisWeek,thisMonth"
+                    "presets": "today,thisWeek,thisMonth",
+                    "minDays": null,
+                    "maxDays": null,
+                    "fiscalYearStart": "jan"
                 }
             },
             {
@@ -112,7 +136,10 @@
                     "sameDay": "allow",
                     "duration": "show",
                     "time": "auto",
-                    "presets": ""
+                    "presets": "",
+                    "minDays": null,
+                    "maxDays": null,
+                    "fiscalYearStart": "jan"
                 }
             },
             {
@@ -127,7 +154,10 @@
                     "sameDay": "block",
                     "duration": "show",
                     "time": "auto",
-                    "presets": "thisMonth,next7,next30"
+                    "presets": "thisMonth,next7,next30",
+                    "minDays": null,
+                    "maxDays": null,
+                    "fiscalYearStart": "jan"
                 }
             },
             {
@@ -142,7 +172,27 @@
                     "sameDay": "allow",
                     "duration": "show",
                     "time": "auto",
-                    "presets": "today,last7,last30,thisMonth,next7,next30"
+                    "presets": "today,last7,last30,thisMonth,next7,next30",
+                    "minDays": null,
+                    "maxDays": null,
+                    "fiscalYearStart": "jan"
+                }
+            },
+            {
+                "slug": "fiscal",
+                "name": "Fiscal ranges, last year to today",
+                "props": {
+                    "startDate": "2026-07-01T12:00:00",
+                    "endDate": "2026-09-30T12:00:00",
+                    "minDate": null,
+                    "maxDate": null,
+                    "sameDay": "allow",
+                    "duration": "show",
+                    "time": "auto",
+                    "presets": "lastFiscalQuarter,thisFiscalQuarter,fiscalYearToDate,thisQuarter,last90",
+                    "minDays": -365,
+                    "maxDays": 0,
+                    "fiscalYearStart": "apr"
                 }
             }
         ]

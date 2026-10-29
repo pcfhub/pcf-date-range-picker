@@ -1,12 +1,13 @@
 import * as React from 'react';
 import { IInputs, IOutputs } from './generated/ManifestTypes';
 import { DateRangePickerControl, IProps } from './components/DateRangePickerControl';
-import { formatTimeOfDay, parsePresets, toCalendarLocale } from './calendar';
-import { probe } from './probe';
+import { formatTimeOfDay, isFiscal, parsePresets, toCalendarLocale } from './calendar';
+import { OrganisationReader, fiscalSetting, readFiscalMonth } from './fiscal';
 import {
     ColumnShape,
     OffsetFor,
     atMidday,
+    effectiveBounds,
     fromPlatform,
     isSameDay,
     isSameSecond,
@@ -84,6 +85,14 @@ export class DateRangePicker implements ComponentFramework.ReactControl<IInputs,
     private startShape: ColumnShape = { behavior: undefined, hasTime: false };
     private endShape: ColumnShape = { behavior: undefined, hasTime: false };
 
+    /**
+     * The organisation's fiscal start month, once asked — held here as well as
+     * in fiscal.ts's per-Web-API cache, because nothing promises that a host
+     * hands the same `webAPI` object to every `updateView`, and the rig does
+     * not. Asked at most once in the control's life.
+     */
+    private fiscalRead: Promise<number> | null = null;
+
     public init(
         _context: ComponentFramework.Context<IInputs>,
         notifyOutputChanged: () => void,
@@ -93,8 +102,6 @@ export class DateRangePicker implements ComponentFramework.ReactControl<IInputs,
     }
 
     public updateView(context: ComponentFramework.Context<IInputs>): React.ReactElement {
-        probe(context);
-
         const start = context.parameters.startDate;
         const end = context.parameters.endDate;
 
@@ -194,14 +201,63 @@ export class DateRangePicker implements ComponentFramework.ReactControl<IInputs,
          * shipped control blocked same-day ranges and hid the duration by
          * default, which is the opposite of what its own descriptions promised.
          */
+        /*
+         * "Today" is resolved once per render and handed down, so the
+         * calendar's highlight, every preset and the rolling bounds agree with
+         * each other — and so the smoke suite can say when now is.
+         */
+        const today = new Date();
+
+        /*
+         * The static bounds and the rolling ones (`minDays`/`maxDays`, days
+         * from today), the tighter of each pair — see `effectiveBounds`. Read
+         * through optional chaining: a host built before 0.4.0's manifest
+         * hands over no such parameter at all.
+         */
+        const bounds = effectiveBounds(
+            context.parameters.minDate.raw ?? null,
+            context.parameters.maxDate.raw ?? null,
+            context.parameters.minDays?.raw ?? null,
+            context.parameters.maxDays?.raw ?? null,
+            today,
+        );
+
         const rules = {
             allowSameDay: String(context.parameters.sameDay.raw ?? 'allow') !== 'block',
-            min: context.parameters.minDate.raw ?? null,
-            max: context.parameters.maxDate.raw ?? null,
+            min: bounds.min,
+            max: bounds.max,
             byInstant: this.startShape.hasTime && this.endShape.hasTime,
         };
 
         const locale = toCalendarLocale(context.userSettings.dateFormattingInfo);
+        const presets = parsePresets(context.parameters.presets.raw);
+
+        /*
+         * The month the fiscal ranges count from. A month the maker named is
+         * used as it is. `org` — the default, and what an unset value means
+         * (see `fiscalSetting`) — is read from the organisation once, and
+         * only when a fiscal range is actually listed: a rail with none of
+         * them costs no request. With no Web API to ask, January.
+         *
+         * The user's zone converts the organisation's start only on a form.
+         * A canvas app's offset call answers the browser's, in the opposite
+         * sign (0.3.2), so there the browser's month is read instead.
+         */
+        const fiscal = fiscalSetting(context.parameters.fiscalYearStart?.raw);
+        const webAPI = context.webAPI as unknown as Partial<OrganisationReader> | undefined;
+        let fiscalMonth: number | null = 0;
+        let fiscalPending: Promise<number> | null = null;
+
+        if (fiscal !== 'org') {
+            fiscalMonth = fiscal.month;
+        } else if (presets.some(isFiscal) && typeof webAPI?.retrieveMultipleRecords === 'function') {
+            const onForm = columnOf(start) !== undefined;
+
+            this.fiscalRead = this.fiscalRead
+                ?? readFiscalMonth(webAPI as OrganisationReader, (date) => (onForm ? offsetFor(date) : null));
+            fiscalMonth = null;
+            fiscalPending = this.fiscalRead;
+        }
 
         const props: IProps = {
             startDate: this.startDate,
@@ -222,7 +278,9 @@ export class DateRangePicker implements ComponentFramework.ReactControl<IInputs,
             label: context.mode.label,
             isRTL: context.userSettings.isRTL,
             showDuration: String(context.parameters.duration.raw ?? 'show') !== 'hide',
-            presets: parsePresets(context.parameters.presets.raw),
+            presets,
+            fiscalMonth,
+            fiscalPending,
             /*
              * Month names, day names and the first day of the week come from the
              * host rather than from `Intl`, for the same reason the formatters
@@ -232,12 +290,7 @@ export class DateRangePicker implements ComponentFramework.ReactControl<IInputs,
              * none, which is what the fallback inside is for.
              */
             locale,
-            /*
-             * "Today" is resolved once per render and handed down, so the
-             * calendar's highlight and every preset agree with each other — and
-             * so the smoke suite can say when now is.
-             */
-            today: new Date(),
+            today,
             // Typed as of @types/powerapps-component-framework 1.3.18, so no
             // cast is needed — but absent in PCFHub's demo harness, which is
             // why the component falls back to Fluent's own light theme.

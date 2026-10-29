@@ -72,6 +72,9 @@ tests that run under several timezones.
 | `sameDay` | Enum | input | `allow` | `allow` or `block` a one-day range |
 | `duration` | Enum | input | `show` | `show` or `hide` how many days the range covers |
 | `presets` | SingleLine.Text | input | six of them | Comma-separated quick ranges; empty for none |
+| `minDays` | Whole.None | input | — | Optional earliest day, in days from today (`-30`) |
+| `maxDays` | Whole.None | input | — | Optional latest day, in days from today (`90`) |
+| `fiscalYearStart` | Enum | input | `org` | The fiscal year's first month: `org` reads the organisation's setting, or `jan` … `dec` |
 
 `sameDay` and `duration` replaced `allowSameDay` and `showDuration` in 0.2.0, and
 the rename is the point. Both were `TwoOptions` carrying `default-value="true"`,
@@ -81,10 +84,20 @@ value meaning "the maker never touched this" and an untouched property arrives a
 duration by default, contradicting its own descriptions. An `Enum` carries a real
 default. See `docs/migration.md`.
 
-`presets` takes any of `today`, `thisWeek`, `last7`, `last30`, `thisMonth`,
-`lastMonth`, `thisYear`, `next7`, `next30`, `nextMonth`. Unknown tokens are
+`presets` takes `today`; `lastN` and `nextN` for any N up to 366; `thisWeek`,
+`lastWeek`, `nextWeek`; `thisMonth`, `lastMonth`, `nextMonth`, `monthToDate`;
+`thisQuarter`, `lastQuarter`, `nextQuarter`, `quarterToDate`; `thisYear`,
+`lastYear`, `yearToDate`; and the fiscal `thisFiscalYear`, `lastFiscalYear`,
+`fiscalYearToDate`, `thisFiscalQuarter`, `lastFiscalQuarter`. Unknown tokens are
 dropped rather than thrown — the property is text and a canvas formula can put
 anything in it, so a typo should cost one button rather than the control.
+
+The fiscal ranges count from `fiscalYearStart`. With `org` (the default, and
+what a control placed before 0.4.0 gets — the platform hands such a control
+`null`, not the declared default) the control reads
+`organization.fiscalcalendarstart` once through `context.webAPI`, taking the
+month in the Dataverse user's zone, because the column is User Local behind a
+Date Only format. With no Web API, or a refusal, January.
 
 `getOutputs()` returns **both** bound values on every call, and emits `null` rather
 than `undefined` to clear one — `undefined` means "no change", which a canvas app

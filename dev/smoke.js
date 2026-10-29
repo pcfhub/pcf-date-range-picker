@@ -1378,7 +1378,282 @@ check(
 
 disposeAll();
 
-report();
+/* ===================================================================== 0.4.0 */
+
+/*
+ * The range arithmetic, the bounds and the fiscal read, as pure modules —
+ * loaded from source through `dev/modules.js` so "today" can be any day, not
+ * only the fixed clock the bundle sees. What the bundle does with them is
+ * asserted after, through `mount`.
+ */
+const { createLoader } = require('./modules.js');
+const load = createLoader({
+    root: path.join(root, 'DateRangePicker'),
+    forbid: [[/^react/, 'React'], [/components\//, 'the component tree']],
+});
+const cal = load('calendar');
+const rng = load('range');
+const fis = load('fiscal');
+
+const iso = (date) => (date ? rng.toInputValue(date) : 'null');
+const span = (range) => `${iso(range.start)}..${iso(range.end)}`;
+const mondayFirst = cal.toCalendarLocale(host.DATE_FORMATTING);
+const tokens = (raw) => cal.parsePresets(raw).map((preset) => preset.token).join(',');
+
+/* ------------------------------------------------- 0.4.0: the token grammar */
+
+check(
+    'a counted range is any lastN or nextN from 1 to 366, sorted by its count inside its slot; 0, 367 and nonsense are dropped',
+    tokens('last90,today,next14,lastQuarter,last7,bogus,last0,last367,next30,thisFiscalYear') === 'today,last7,last90,lastQuarter,thisFiscalYear,next14,next30',
+    tokens('last90,today,next14,lastQuarter,last7,bogus,last0,last367,next30,thisFiscalYear'),
+);
+
+check(
+    'the ten 0.3.x tokens keep their order, so a rail configured before 0.4.0 looks as it did',
+    tokens('nextMonth,next30,next7,thisYear,lastMonth,thisMonth,last30,last7,thisWeek,today') === 'today,thisWeek,last7,last30,thisMonth,lastMonth,thisYear,next7,next30,nextMonth',
+    tokens('nextMonth,next30,next7,thisYear,lastMonth,thisMonth,last30,last7,thisWeek,today'),
+);
+
+check('a duplicate collapses, last007 included', tokens('last7, last007 ,last7') === 'last7');
+
+/* ---------------------------------------------- 0.4.0: what each one means */
+
+/*
+ * Thursday 29 October 2026, weeks starting Monday: every new range, worked by
+ * hand. Both ends inclusive; a "to date" range ends today.
+ */
+const thursday = day(2026, 10, 29);
+const expectedOn29Oct = {
+    last90: '2026-08-01..2026-10-29',
+    next14: '2026-10-29..2026-11-11',
+    lastWeek: '2026-10-19..2026-10-25',
+    nextWeek: '2026-11-02..2026-11-08',
+    monthToDate: '2026-10-01..2026-10-29',
+    quarterToDate: '2026-10-01..2026-10-29',
+    thisQuarter: '2026-10-01..2026-12-31',
+    lastQuarter: '2026-07-01..2026-09-30',
+    nextQuarter: '2027-01-01..2027-03-31',
+    yearToDate: '2026-01-01..2026-10-29',
+    lastYear: '2025-01-01..2025-12-31',
+};
+const wrongOn29Oct = Object.entries(expectedOn29Oct)
+    .map(([token, want]) => [token, want, span(cal.resolvePreset(cal.parsePresets(token)[0], thursday, mondayFirst))])
+    .filter(([, want, got]) => want !== got);
+
+check('every new calendar range, on 29 October 2026', wrongOn29Oct.length === 0, JSON.stringify(wrongOn29Oct));
+
+/*
+ * The fiscal ranges, with the year starting in April (month 3): on 29 October
+ * 2026, inside the year; on 15 February 2027, before April, so the fiscal
+ * year began the calendar year before. And a July start either side of the
+ * boundary, and a February start whose quarter crosses a leap February.
+ */
+const fiscalCases = [
+    ['thisFiscalYear', thursday, 3, '2026-04-01..2027-03-31'],
+    ['lastFiscalYear', thursday, 3, '2025-04-01..2026-03-31'],
+    ['fiscalYearToDate', thursday, 3, '2026-04-01..2026-10-29'],
+    ['thisFiscalQuarter', thursday, 3, '2026-10-01..2026-12-31'],
+    ['lastFiscalQuarter', thursday, 3, '2026-07-01..2026-09-30'],
+    ['thisFiscalYear', day(2027, 2, 15), 3, '2026-04-01..2027-03-31'],
+    ['thisFiscalQuarter', day(2027, 2, 15), 3, '2027-01-01..2027-03-31'],
+    ['lastFiscalQuarter', day(2027, 2, 15), 3, '2026-10-01..2026-12-31'],
+    ['thisFiscalYear', day(2026, 6, 30), 6, '2025-07-01..2026-06-30'],
+    ['thisFiscalYear', day(2026, 7, 1), 6, '2026-07-01..2027-06-30'],
+    ['thisFiscalQuarter', day(2028, 1, 31), 1, '2027-11-01..2028-01-31'],
+    ['thisFiscalQuarter', day(2028, 2, 29), 1, '2028-02-01..2028-04-30'],
+    ['thisFiscalYear', thursday, 0, '2026-01-01..2026-12-31'],
+];
+const wrongFiscal = fiscalCases
+    .map(([token, today, month, want]) => [token, iso(today), month, want, span(cal.resolvePreset(cal.parsePresets(token)[0], today, mondayFirst, month))])
+    .filter((row) => row[3] !== row[4]);
+
+check('every fiscal range, for April, July, February and January starts, either side of the year boundary', wrongFiscal.length === 0, JSON.stringify(wrongFiscal));
+
+check(
+    'a leap February is whole: this month on 10 February 2028 ends on the 29th',
+    span(cal.resolvePreset(cal.parsePresets('thisMonth')[0], day(2028, 2, 10), mondayFirst)) === '2028-02-01..2028-02-29',
+);
+
+check(
+    'only the five fiscal ranges are fiscal',
+    cal.parsePresets('thisFiscalYear,lastFiscalYear,fiscalYearToDate,thisFiscalQuarter,lastFiscalQuarter').every(cal.isFiscal)
+        && !cal.parsePresets('thisQuarter,yearToDate,last90,thisYear').some(cal.isFiscal),
+);
+
+/* ----------------------------------------------- 0.4.0: bounds from today */
+
+check(
+    'minDays and maxDays are days from today, signed: -30 and 90 on 29 October 2026',
+    iso(rng.effectiveBounds(null, null, -30, 90, thursday).min) === '2026-09-29'
+        && iso(rng.effectiveBounds(null, null, -30, 90, thursday).max) === '2027-01-27',
+);
+
+check(
+    'with a static bound as well, the tighter of each pair wins',
+    iso(rng.effectiveBounds(day(2026, 10, 1), day(2026, 12, 31), -30, 90, thursday).min) === '2026-10-01'
+        && iso(rng.effectiveBounds(day(2026, 9, 1), day(2027, 6, 30), -30, 90, thursday).min) === '2026-09-29'
+        && iso(rng.effectiveBounds(day(2026, 9, 1), day(2026, 12, 31), -30, 90, thursday).max) === '2026-12-31'
+        && iso(rng.effectiveBounds(day(2026, 9, 1), day(2027, 6, 30), -30, 90, thursday).max) === '2027-01-27',
+);
+
+check(
+    'an unset Whole input — measured as null — is no bound, not today; nor is anything that is not a finite number',
+    rng.effectiveBounds(null, null, null, null, thursday).min === null
+        && rng.effectiveBounds(null, null, NaN, undefined, thursday).max === null
+        && iso(rng.effectiveBounds(null, null, 0, null, thursday).min) === '2026-10-29',
+);
+
+/* ------------------------------------- 0.4.0: the month-and-year view */
+
+(() => {
+    const view = { leftMonth: day(2026, 1, 1), focusDay: day(2026, 1, 31), pointed: day(2026, 1, 20) };
+    const jumped = cal.jumpTo(view, day(2026, 2, 1));
+
+    check(
+        'a jump lands the month on the left, the focused day clamped into it, and the pointer where it was',
+        iso(jumped.leftMonth) === '2026-02-01' && iso(jumped.focusDay) === '2026-02-28' && jumped.pointed === view.pointed,
+        `${iso(jumped.leftMonth)} ${iso(jumped.focusDay)}`,
+    );
+})();
+
+check(
+    'a month is disabled only when no day in it is inside the bounds',
+    !cal.monthSelectable(day(2026, 9, 1), day(2026, 10, 15), null)
+        && cal.monthSelectable(day(2026, 10, 1), day(2026, 10, 15), null)
+        && cal.monthSelectable(day(2027, 1, 1), null, day(2027, 1, 10))
+        && !cal.monthSelectable(day(2027, 2, 1), null, day(2027, 1, 10)),
+);
+
+check(
+    'month names: the first twelve of the thirteen a real organisation hands over; anything short or with a blank falls back to English',
+    mondayFirst.monthNames.length === 12 && mondayFirst.monthNames[2] === 'März' && mondayFirst.abbreviatedMonthNames[11] === 'Dez'
+        && cal.toCalendarLocale({ monthNames: ['a', 'b'] }).monthNames[0] === 'January'
+        && cal.toCalendarLocale({ monthNames: ['Jan', '', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', ''] }).monthNames[1] === 'February',
+);
+
+/* ------------------------------------------- 0.4.0: the fiscal year's start */
+
+check(
+    'fiscalYearStart: a month by its name; null — what a form configured before 0.4.0 hands over — and anything else mean the organisation',
+    JSON.stringify(fis.fiscalSetting('apr')) === '{"month":3}'
+        && JSON.stringify(fis.fiscalSetting('DEC')) === '{"month":11}'
+        && fis.fiscalSetting(null) === 'org'
+        && fis.fiscalSetting(undefined) === 'org'
+        && fis.fiscalSetting('org') === 'org'
+        && fis.fiscalSetting('april') === 'org',
+);
+
+/*
+ * The organisation's start is an instant, and its month is the user's zone's.
+ * 03:00Z on 1 April is still 31 March in UTC−5; 23:30Z on 31 March is already
+ * 1 April in UTC+1. Reading the UTC or the browser month gets both wrong.
+ */
+check(
+    'the organisation\'s start month is read in the user\'s zone, not UTC\'s and not the browser\'s',
+    fis.monthOfFiscalStart('2022-04-01T10:59:00Z', () => -300) === 3
+        && fis.monthOfFiscalStart('2022-04-01T03:00:00Z', () => -300) === 2
+        && fis.monthOfFiscalStart('2022-03-31T23:30:00Z', () => 60) === 3
+        && fis.monthOfFiscalStart('2022-04-01T10:59:00Z', () => 840) === 3,
+    [fis.monthOfFiscalStart('2022-04-01T03:00:00Z', () => -300), fis.monthOfFiscalStart('2022-03-31T23:30:00Z', () => 60)].join(','),
+);
+
+check(
+    'nothing to read is no month',
+    fis.monthOfFiscalStart(undefined, () => 0) === null && fis.monthOfFiscalStart('soon', () => 0) === null && fis.monthOfFiscalStart('', () => 0) === null,
+);
+
+/* ------------------------------------------- 0.4.0: through the bundle */
+
+const stringsOrMarked = (key) => (host.STRINGS[key] !== undefined ? host.STRINGS[key] : `resx:${key}`);
+
+check(
+    'a counted range with no string of its own reads from the template; last7 keeps its own',
+    (() => {
+        const m = renderDeep(mount({ presets: 'last90,last7', getString: stringsOrMarked }).element);
+
+        return m.includes('>Last 90 days<') && m.includes('resx:DateRangePicker_Preset_last7');
+    })(),
+);
+
+check(
+    'minDays and maxDays reach the rules as dates from today — the clock is 1 January 2026',
+    (() => {
+        const rules = mount({ minDays: -30, maxDays: 90 }).props().rules;
+
+        return iso(rules.min) === '2025-12-02' && iso(rules.max) === '2026-04-01';
+    })(),
+);
+
+check(
+    'a host built against the 0.3.x manifest hands over no such parameters, and the static bounds are all there is',
+    (() => {
+        const rules = mount({ minDays: undefined, maxDays: undefined, fiscalYearStart: undefined, min: day(2026, 1, 5) }).props().rules;
+
+        return iso(rules.min) === '2026-01-05' && rules.max === null;
+    })(),
+);
+
+check(
+    'the left month\'s heading is the button into the month-and-year view; the right one stays text',
+    (() => {
+        const m = renderDeep(mount({}).element);
+
+        return count(m, /DateRangePicker-month-jump/g) === 1 && count(m, /DateRangePicker-month-heading/g) === 2
+            && m.includes('aria-label="resx:DateRangePicker_ChooseMonth"') && m.includes('aria-expanded="false"');
+    })(),
+);
+
+(async () => {
+    /*
+     * A named month is used as it is, and nothing is read.
+     */
+    const named = [];
+    const april = mount({ presets: 'thisFiscalYear', fiscalYearStart: 'apr', webApiCalls: named, start: day(2025, 4, 1), end: day(2026, 3, 31) });
+
+    check(
+        'a fiscal year starting in a named month needs no read, and a pair that is that year reads as pressed',
+        named.length === 0 && april.props().fiscalMonth === 3 && april.props().fiscalPending === null
+            && renderDeep(april.element).includes('aria-pressed="true"'),
+    );
+
+    /*
+     * `org` — here as the null a form hands over — reads the organisation once,
+     * and only for a rail that lists a fiscal range.
+     */
+    const calls = [];
+    const org = mount({ presets: 'thisFiscalYear,thisQuarter', webApiCalls: calls, fiscalStart: '2022-04-01T10:59:00Z', userOffset: -300 });
+    const pendingMarkup = renderDeep(org.element);
+
+    check(
+        'org: one organisation read, for fiscalcalendarstart, and the fiscal range waits for it — aria-disabled, not pressed',
+        calls.length === 1 && calls[0].entity === 'organization' && /fiscalcalendarstart/.test(calls[0].query)
+            && org.props().fiscalMonth === null && org.props().fiscalPending instanceof Promise
+            && /data-preset="thisFiscalYear"[^>]*aria-disabled="true"/.test(pendingMarkup)
+            && !/data-preset="thisQuarter"[^>]*aria-disabled/.test(pendingMarkup),
+        `${calls.length} calls; ${(pendingMarkup.match(/<button[^>]*data-preset="thisFiscalYear"[^>]*>/) || [''])[0]}`,
+    );
+
+    check('…which answers April, read in the user\'s zone', (await org.props().fiscalPending) === 3);
+
+    org.update({});
+    check('a re-render asks nothing more', calls.length === 1, `${calls.length} calls`);
+
+    const quiet = [];
+    mount({ presets: 'today,thisQuarter', webApiCalls: quiet });
+    check('a rail with no fiscal range costs no request', quiet.length === 0);
+
+    const refused = mount({ presets: 'thisFiscalYear', webAPI: 'fails' });
+    check('a refused read is January, not a broken rail', (await refused.props().fiscalPending) === 0);
+
+    const canvas = mount({ presets: 'thisFiscalYear', host: 'canvas' });
+    check('canvas has no Web API to ask: January, at once', canvas.props().fiscalPending === null && canvas.props().fiscalMonth === 0);
+
+    disposeAll();
+    report();
+})().catch((error) => {
+    check('the asynchronous checks ran', false, error && error.stack);
+    report();
+});
 
 function report() {
     const failed = results.filter((result) => !result.ok);

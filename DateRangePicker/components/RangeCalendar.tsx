@@ -6,6 +6,8 @@ import {
     addDays,
     addMonths,
     buildMonth,
+    jumpTo,
+    monthSelectable,
     moveFocus,
     pageWindow,
     pointAt,
@@ -137,14 +139,58 @@ export function RangeCalendar(props: IRangeCalendarProps): React.ReactElement {
     const wantsFocus = React.useRef(false);
     const days = React.useRef<Record<string, HTMLButtonElement | null>>({});
 
+    /*
+     * The month-and-year view: open or not, the year it shows, and the month
+     * holding its tab stop. Opened from the left month's heading; a pick
+     * jumps the window there (`jumpTo`) and closes it.
+     */
+    const [picker, setPicker] = React.useState<{ year: number; focus: number } | null>(null);
+    const headingRef = React.useRef<HTMLButtonElement | null>(null);
+    const monthButtons = React.useRef<(HTMLButtonElement | null)[]>([]);
+    const wantsPickerFocus = React.useRef(false);
+
     React.useEffect(() => {
         if (!wantsFocus.current) {
             return;
         }
 
         wantsFocus.current = false;
-        days.current[toInputValue(view.focusDay)]?.focus();
+
+        // After a jump the focused day can be one the bounds disable, and
+        // focus() on a disabled button moves nothing — the heading then takes
+        // it, so the keyboard user is never left on the page body.
+        const day = days.current[toInputValue(view.focusDay)];
+
+        if (day && !day.disabled) {
+            day.focus();
+        } else {
+            headingRef.current?.focus();
+        }
     });
+
+    React.useEffect(() => {
+        if (wantsPickerFocus.current && picker !== null) {
+            wantsPickerFocus.current = false;
+            monthButtons.current[picker.focus]?.focus();
+        }
+    });
+
+    const openPicker = (): void => {
+        wantsPickerFocus.current = true;
+        setPicker({ year: view.leftMonth.getFullYear(), focus: view.leftMonth.getMonth() });
+    };
+
+    const closePicker = (): void => {
+        setPicker(null);
+        // The heading is back on the next render; focus it there.
+        window.setTimeout(() => headingRef.current?.focus(), 0);
+    };
+
+    const pickMonth = (year: number, month: number): void => {
+        wantsFocus.current = true;
+        setView((current) => jumpTo(current, new Date(year, month, 1)));
+        setPicker(null);
+    };
 
     const rightMonth = addMonths(view.leftMonth, 1);
 
@@ -234,14 +280,35 @@ export function RangeCalendar(props: IRangeCalendarProps): React.ReactElement {
         setView((current) => pageWindow(current, months));
     };
 
-    const renderMonth = (month: Date): React.ReactElement => {
+    const renderMonth = (month: Date, isLeft: boolean): React.ReactElement => {
         const heading = props.formatMonth(month);
 
         return (
             <div className="DateRangePicker-month" key={heading}>
-                <div className="DateRangePicker-month-heading" aria-hidden="true">
-                    {heading}
-                </div>
+                {isLeft ? (
+                    /*
+                     * The left heading opens the month-and-year view. A button
+                     * of its own rather than the text with a click on it, so it
+                     * is reachable by Tab and says what it does. The right
+                     * heading stays text: two ways in to one view is one more
+                     * tab stop and nothing new.
+                     */
+                    <button
+                        type="button"
+                        ref={headingRef}
+                        className="DateRangePicker-month-heading DateRangePicker-month-jump"
+                        aria-expanded={false}
+                        aria-label={props.text('ChooseMonth').replace('{0}', heading)}
+                        disabled={props.disabled}
+                        onClick={openPicker}
+                    >
+                        {heading}
+                    </button>
+                ) : (
+                    <div className="DateRangePicker-month-heading" aria-hidden="true">
+                        {heading}
+                    </div>
+                )}
                 <div className="DateRangePicker-grid" role="grid" aria-label={heading}>
                     <div className="DateRangePicker-week" role="row">
                         {weekdayHeaders(props.locale).map((header) => (
@@ -349,6 +416,10 @@ export function RangeCalendar(props: IRangeCalendarProps): React.ReactElement {
         );
     };
 
+    if (picker !== null) {
+        return renderPicker(picker);
+    }
+
     return (
         <div className="DateRangePicker-calendar" onKeyDown={onKeyDown}>
             <div className="DateRangePicker-nav">
@@ -373,11 +444,141 @@ export function RangeCalendar(props: IRangeCalendarProps): React.ReactElement {
             </div>
 
             <div className="DateRangePicker-months">
-                {renderMonth(view.leftMonth)}
-                {props.months === 2 && renderMonth(rightMonth)}
+                {renderMonth(view.leftMonth, true)}
+                {props.months === 2 && renderMonth(rightMonth, false)}
             </div>
         </div>
     );
+
+    /**
+     * The year and its twelve months, in place of the day grids.
+     *
+     * A grid of buttons with one tab stop, like the days: the arrows walk the
+     * months (up and down by a row of three, the horizontal pair swapped under
+     * RTL), Page Up and Page Down change the year, Enter or Space picks, and
+     * Escape goes back to the days without closing the popover. A month with
+     * no day inside the bounds is disabled, as a day outside them is.
+     */
+    function renderPicker(state: { year: number; focus: number }): React.ReactElement {
+        const { year } = state;
+
+        const onPickerKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
+            const back = props.isRTL ? 'ArrowRight' : 'ArrowLeft';
+            const forward = props.isRTL ? 'ArrowLeft' : 'ArrowRight';
+            let focus = state.focus;
+            let nextYear = year;
+
+            if (event.key === 'Escape') {
+                // The popover closes on Escape too; this one only goes back.
+                event.preventDefault();
+                event.stopPropagation();
+                closePicker();
+
+                return;
+            }
+
+            if (event.key === back) {
+                focus -= 1;
+            } else if (event.key === forward) {
+                focus += 1;
+            } else if (event.key === 'ArrowUp') {
+                focus -= 3;
+            } else if (event.key === 'ArrowDown') {
+                focus += 3;
+            } else if (event.key === 'Home') {
+                focus = 0;
+            } else if (event.key === 'End') {
+                focus = 11;
+            } else if (event.key === 'PageUp') {
+                nextYear -= 1;
+            } else if (event.key === 'PageDown') {
+                nextYear += 1;
+            } else {
+                return;
+            }
+
+            // Off either end of the year walks into the next one.
+            nextYear += Math.floor(focus / 12);
+            focus = ((focus % 12) + 12) % 12;
+
+            // The day grid's handler sits on the calendar's root and would
+            // take these keys too.
+            event.preventDefault();
+            event.stopPropagation();
+            wantsPickerFocus.current = true;
+            setPicker({ year: nextYear, focus });
+        };
+
+        const shiftYear = (by: number): void => setPicker({ year: year + by, focus: state.focus });
+
+        return (
+            <div
+                className={`DateRangePicker-calendar DateRangePicker-calendar--picking${props.months === 2 ? ' is-two' : ''}`}
+                onKeyDown={onPickerKeyDown}
+            >
+                <div className="DateRangePicker-picker-year">
+                    <button
+                        type="button"
+                        className="DateRangePicker-nav-button"
+                        aria-label={props.text('PreviousYear')}
+                        title={props.text('PreviousYear')}
+                        onClick={(): void => shiftYear(-1)}
+                    >
+                        <Chevron direction={props.isRTL ? 'right' : 'left'} />
+                    </button>
+                    <span className="DateRangePicker-picker-year-label" aria-live="polite">
+                        {year}
+                    </span>
+                    <button
+                        type="button"
+                        className="DateRangePicker-nav-button"
+                        aria-label={props.text('NextYear')}
+                        title={props.text('NextYear')}
+                        onClick={(): void => shiftYear(1)}
+                    >
+                        <Chevron direction={props.isRTL ? 'left' : 'right'} />
+                    </button>
+                </div>
+
+                <div
+                    className="DateRangePicker-picker-grid"
+                    role="grid"
+                    aria-label={props.text('MonthGrid').replace('{0}', String(year))}
+                >
+                    {[0, 1, 2, 3].map((row) => (
+                        <div className="DateRangePicker-picker-row" role="row" key={row}>
+                            {[0, 1, 2].map((column) => {
+                                const month = row * 3 + column;
+                                const first = new Date(year, month, 1);
+                                const enabled = monthSelectable(first, props.min, props.max);
+                                const current = year === view.leftMonth.getFullYear() && month === view.leftMonth.getMonth();
+
+                                return (
+                                    <div className="DateRangePicker-picker-cell" role="gridcell" key={month}>
+                                        <button
+                                            type="button"
+                                            className={`DateRangePicker-picker-month${current ? ' is-current' : ''}`}
+                                            data-month={month}
+                                            ref={(node): void => {
+                                                monthButtons.current[month] = node;
+                                            }}
+                                            tabIndex={month === state.focus ? 0 : -1}
+                                            aria-label={`${props.locale.monthNames[month]} ${year}`}
+                                            aria-selected={current}
+                                            disabled={!enabled}
+                                            onClick={(): void => pickMonth(year, month)}
+                                        >
+                                            {props.locale.abbreviatedMonthNames[month]}
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
 }
 
 /**

@@ -26,10 +26,14 @@ disagree with each other once somebody saves.
   days between them shade as you move the pointer, so the range you are about to
   choose is visible before you commit to it — and clicking the two days in the
   wrong order swaps them rather than showing you an error.
-- **Quick ranges for the periods people pick.** Today, the last 7 or 30 days,
-  this or last month, this year, the next 7 or 30 days, next month. The maker
-  chooses which appear, and a range already matching one of them shows that
-  shortcut as selected.
+- **Quick ranges for the periods people pick.** Today, the last or next any
+  number of days, weeks, months, quarters, years, *to date* ranges, and the
+  fiscal year and quarter from the organisation's own fiscal settings. The
+  maker chooses which appear, and a range already matching one of them shows
+  that shortcut as selected.
+- **Bounds that move with today**, such as the last 30 days through the next
+  90, beside the fixed earliest and latest dates. And the month heading jumps
+  to any month and year.
 - **It gets the day right — and, from 0.3.0, the time.** Dates and timezones
   are the most common source of off-by-one bugs in Power Apps controls. This
   one reads each column's behaviour and converts once at each edge, so a user

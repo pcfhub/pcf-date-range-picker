@@ -1122,6 +1122,162 @@ field, and the record was not dirty. An abandoned first click is dropped with
 the close, as on Escape. **0.3.3 was never released**; the tag goes from 0.3.2
 to 0.3.4.
 
+## 0.4.0 — ranges of your own, bounds that move, a month and year jump
+
+Picked by the thirtieth demand survey (29 October 2026). Over twelve days on the
+hub this control was the steadiest climber (21 → 24 → 25 downloads, fourth
+overall), and its own limitations page named three gaps:
+- ten fixed quick ranges;
+- bounds fixed at configuration time on a model-driven form;
+- no month or year jump.
+
+Two PCF Gallery controls, Quick Date Navigator and RangeBoundDatePicker, exist
+for exactly those gaps.
+
+### What must be measured first — probe 0.3.9
+
+0.3.9 was a probe build and never tagged. It shipped the manifest 0.4.0 needs
+(`minDays`, `maxDays`, `fiscalYearStart`, WebAPI not required) and
+`DateRangePicker/probe.ts`, which logged one snapshot and parked `dump()` and
+`org()` on `window.__pcfDateRangeProbe`. It was imported to the test
+environment, and `minDays` was set to `-30` in the form XML of the Date Only
+pair only. The organisation's fiscal start was moved to 1 April through the Web
+API for the reading. The probe and its line in `index.ts` were deleted before
+0.4.0 was written.
+
+1. **Can the organisation row be read through the control's own `webAPI`?**
+   *Measured 2026-10-29, as a System Administrator.*
+   `retrieveMultipleRecords('organization', '?$select=fiscalcalendarstart,…')`
+   resolved with one row: `fiscalcalendarstart` the string
+   `"2022-04-01T10:59:00Z"` with a formatted value `"4/1/2022"`,
+   `fiscalperiodtype` `2002` (formatted "2,002": quarters, the organisation's
+   period format being *Quarter {0}*) and `fiscalyeardisplaycode` `1`. **Not
+   measured for a user without System Administrator**, so the control treats
+   a refusal as January.
+2. **Which day does `fiscalcalendarstart` hold?** *Measured.* Learn lists the
+   column as UserLocal behind a Date Only format, the shape 0.2.x spent four
+   releases on, and the value is an instant. Set as 1 April, it holds
+   `10:59Z`. In the Dataverse user's zone (−300 that day) that is
+   05:59 on 1 April, which is the day the formatted value names. It would be
+   2 April east of UTC+13. A start entered near midnight would sit on the
+   other side of the UTC day. So the month is read from the instant moved
+   into the user's zone (`monthOfFiscalStart`), never from its UTC or browser
+   components. The original value, read before anything changed, was
+   `"2022-01-01T10:59:00Z"`. That is the same time of day, so the settings
+   page writes a fixed hour, not midnight.
+3. **A negative and an unset Whole input.** *Measured at runtime.* `-30` in
+   the form XML arrives as the number `-30`, `type: 'Whole.None'`. An unset
+   `maxDays` arrives as `raw: null, type: null`. **Whether the modern form
+   designer lets a maker type `-30` is not verified**: the value went in
+   through the form XML.
+4. **The month-name arrays.** *Measured.* `monthNames`,
+   `abbreviatedMonthNames` and both genitive arrays arrive with **13** entries,
+   the last an empty string. That is .NET's shape, and the reason
+   `toCalendarLocale` takes the first twelve and falls back unless all twelve
+   are there. `yearMonthPattern` is `MMMM yyyy`.
+5. **Canvas.** *Not measured.* No canvas app was run against 0.3.9. The
+   control asks the Web API only on a form, so it cannot misread a canvas
+   offset, and it treats a missing or failing read as January.
+
+**And one answer nobody asked for, which changed the code.** `fiscalYearStart`
+arrived as **`raw: null`**, not as its manifest default `org`. The control was
+already on the form before the property existed, so the form XML has no entry
+for it, and `default-value` is applied only when a maker configures the
+property. So `null` has to mean the default, and `fiscalSetting` reads it that
+way. A mutation that read `null` as January fails five assertions.
+
+### What 0.4.0 built
+
+**`calendar.ts`**
+- **The quick-range grammar.** The tokens are `today`; `lastN` and `nextN`
+  for N from 1 to 366; this, last and next week; this, last and next month
+  and quarter; month, quarter, year and fiscal year to date; this and last
+  year; and this and last fiscal year and fiscal quarter.
+- **Their order.** They sort into one canonical order, with the counted ones
+  by their count inside their slot. The ten 0.3.x tokens keep their relative
+  order, so an existing rail is unchanged.
+- **The month jump.** `jumpTo` lands the picked month on the left and clamps
+  the focused day into it. Like `pageWindow`, it leaves `pointed` alone, for
+  the reason 0.2.6 found.
+- **`monthSelectable`** decides which months the month-and-year view disables.
+
+**`range.ts`** gains `effectiveBounds`: the static and rolling bounds, the
+tighter of each pair.
+
+**`fiscal.ts`** holds `fiscalSetting`, `monthOfFiscalStart`, and
+`readFiscalMonth`, which reads once per Web API object, never rejects, and
+answers January on failure.
+
+**`index.ts`**
+- **Asks only when it needs to.** The organisation is read only for a rail
+  with a fiscal range and `org`. The read is held on the instance as well:
+  the rig hands a new `webAPI` to every pass, and so might a host.
+- **The user's zone only on a form.** It applies the user-zone offset only
+  where a table is named. In canvas the offset call answers the browser's,
+  in the opposite sign (0.3.2).
+
+**The component**
+- **It waits on the read.** The component holds the read's answer in state,
+  because a virtual control cannot ask for another `updateView`.
+- **A fiscal button waits visibly.** Until the answer arrives it is
+  `aria-disabled` and `aria-busy`, never `disabled`. A user resting on it
+  would otherwise be blurred (the workspace's busy-button rule).
+- **The month-and-year view.** The left month's heading is a button that
+  opens it: a year and twelve months in a 3×4 grid with one tab stop. The
+  arrows move (swapped under RTL), Page Up and Page Down change the year,
+  Enter picks, and Escape goes back to the days without closing the popover.
+  It takes the day grids' size, 248px tall and 464px for two months, so the
+  popover does not change shape.
+
+**The manifest, strings and demo**
+- **The manifest** gains the three properties and
+  `<uses-feature name="WebAPI" required="false">`.
+- **The strings.** Five `.resx` files carry 39 new strings each.
+- **The demo.** `pcfhub.json` sets the three new inputs in every preset, all
+  of them naming a month, so the demo makes no Web API call and stays `full`.
+  A new *fiscal* preset shows April quarters within a rolling year.
+
+**The rig and the suite**
+- **The rig.** `dev/host.js` hands `minDays`, `maxDays` and `fiscalYearStart`
+  over as the form does (`null` when unset) and stands in for `webAPI` with
+  the organisation row in the measured shape. It can be refused, delayed or
+  absent (canvas). Its date culture's month names are the measured
+  thirteen-entry arrays, in German, so an English fallback shows.
+- **The suite.** 136 assertions, up from 109. The pure modules are loaded from
+  source through the template's `dev/modules.js`, so "today" can be any day.
+  Every new range is worked by hand on Thursday 29 October 2026, Monday-first.
+  The fiscal ranges are checked for April, July, February and January starts,
+  either side of the year boundary and across a leap February.
+- **Mutation-tested**, with the bundle hash checked across each rebuild:
+  - the fiscal month read from UTC (1 failure);
+  - `null` read as January (5 failures);
+  - the looser bound winning (1 failure).
+
+### Checked in a browser
+
+Driven with real keys in headless Chrome on the harness:
+- The rail shows the eleven new ranges with their English labels.
+- From September, the heading button, ↓ (December), Page Down (2027) and Enter
+  put December 2027 on the left with focus on the 15th.
+- Escape from the view went back to the days, kept the popover open, and
+  left focus on the heading.
+- The month-and-year view has the day grids' size at 760px wide.
+- At 375px the rail is chips and the view fills the width under them.
+
+### Not verified in 0.4.0
+
+- **The form walkthrough.** It comes next.
+- **The designer accepting `-30`** (question 3).
+- **A user without System Administrator reading the organisation row**
+  (question 1). A refusal gives January, which is the documented fallback,
+  not a failure.
+- **Canvas** (question 5).
+- **The device's midnight against the user's.** Rolling bounds and the
+  presets move at the browser's midnight, not the Dataverse user's. For the
+  hours the two disagree, they are a day off from the user's point of view.
+  This is written into the limitations rather than converted, because the
+  calendar's today has always worked this way.
+
 ## Still open
 Everything here is **Not verified** in the strict sense: read-correct against
 the real typings, compiled, and asserted as far as a rig without a browser can

@@ -37,12 +37,22 @@ order: 7
   own `<input type="date">`, so they look and behave like the operating
   system's.
 
-- **Ten quick ranges, and no custom ones.** `presets` chooses from a fixed list:
-  `today`, `thisWeek`, `last7`, `last30`, `thisMonth`, `lastMonth`, `thisYear`,
-  `next7`, `next30`, `nextMonth`. A shortcut outside that list — "this fiscal
-  quarter", "the current sprint" — is not configurable and belongs in a business
-  rule or a canvas formula. Unknown tokens are ignored rather than treated as an
-  error, so a typo costs one button rather than the rail.
+- **Quick ranges come from a list, and none of them is labelled by you.**
+  `presets` picks from the tokens in the [API reference](api), which cover
+  days (any `lastN` or `nextN` up to 366), weeks, months, quarters, years and
+  the fiscal year. A range with a fixed start and a name of your own, such as
+  "the current sprint", is not configurable. It belongs in a business rule or a
+  canvas formula that sets the columns. Unknown tokens are ignored rather than
+  treated as an error, so a typo costs one button rather than the rail.
+
+- **The fiscal year has a start month, and quarters of three months.** `org`
+  reads the start month from the organisation's Fiscal Year Settings, and a
+  month named in `fiscalYearStart` overrides it. Fiscal *periods* of other
+  shapes (four-week periods, 4-4-5 calendars, a start day other than the first
+  of the month) are not modelled: a fiscal range always begins on the first of
+  a month. In a canvas app, in the hub's demo, or for a user the read is refused
+  to, the organisation's setting cannot be read and the fiscal year starts in
+  January. Name the month to get it everywhere.
 
 - **Weeks start where the organisation says.** The first day of the week, the day
   names and the month names all come from the user's Dataverse date settings.
@@ -50,13 +60,16 @@ order: 7
   settings — a canvas app, or `npm start` — falls back to Sunday-first English
   column headers while every date shown still uses the platform's own formatting.
 
-- **No week numbers, and no month or year jump.** Paging is one month at a time
-  with the arrows, or a month at a time from the keyboard with `Page Up` and
-  `Page Down`; `Shift` with either jumps a year.
+- **No week numbers.** The month heading jumps to any month and year, and the
+  arrows page one month at a time (`Page Up` and `Page Down` from the
+  keyboard, with `Shift` for a year). There is no week-number column.
 
-- **Bounds are static on a model-driven form.** `minDate` and `maxDate` are set by
-  the maker at configuration time. A rolling window such as "the next 90 days"
-  needs a business rule, or a canvas app where the bounds can be formulas.
+- **Rolling bounds count whole days from the device's today.** `minDays` and
+  `maxDays` move with the date, and they move at the device's midnight, not
+  the Dataverse user's. For the hours when the two disagree, the window is a
+  day off from the user's point of view. A bound relative to something other
+  than today, such as the record's created date or another column, is not
+  configurable: that is a business rule.
 
 - **The picker is read-only unless both columns are writable.** The control edits
   one range, and half a range is not one — so a read-only end date, or an end date

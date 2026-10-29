@@ -73,11 +73,28 @@ old names needs re-binding.
 
 ## Can I add my own quick range?
 
-Not beyond the ten the control offers: `today`, `thisWeek`, `last7`, `last30`,
-`thisMonth`, `lastMonth`, `thisYear`, `next7`, `next30`, `nextMonth`. Set
+From the list, yes. Since 0.4.0 it has any number of days back or ahead
+(`last90`, `next14`, any count up to 366), weeks, quarters, years, *to date*
+ranges and the fiscal year. The [API reference](api) has every token. Set
 **Quick ranges** to the comma-separated list you want, in any order, or to an
-empty string for none. Something like "this fiscal quarter" belongs in a business
-rule or a canvas formula that sets the two variables directly.
+empty string for none. A range with a name and a start of your own, such as
+"the current sprint", is not configurable. It belongs in a business rule or a
+canvas formula that sets the two variables directly.
+
+## Where does the fiscal year start?
+
+Where the organisation's **Fiscal Year Settings** say, on a model-driven form.
+The control reads the start month once, through the Web API, and only when a
+fiscal range is listed. Set **Fiscal year starts in** to a month to override
+that, or to get the same answer in a canvas app, where there is no
+organisation to ask and the fiscal year otherwise starts in January.
+
+## Can the bounds move with the date?
+
+Yes, since 0.4.0. **Earliest, in days from today** and **Latest, in days from
+today** take a number of days, negative for the past: `-30` and `90` allow
+the last thirty days through the next ninety. They combine with the fixed
+**Earliest date** and **Latest date**, and the tighter of each pair applies.
 
 ## Why does the calendar not look like the Windows one?
 

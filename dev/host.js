@@ -73,6 +73,12 @@
         DateRangePicker_ElapsedDay: '1 day',
         DateRangePicker_ElapsedHours: '{0} h',
         DateRangePicker_ElapsedMinutes: '{0} min',
+        DateRangePicker_Preset_lastN: 'Last {0} days',
+        DateRangePicker_Preset_nextN: 'Next {0} days',
+        DateRangePicker_ChooseMonth: 'Choose month and year, {0}',
+        DateRangePicker_PreviousYear: 'Previous year',
+        DateRangePicker_NextYear: 'Next year',
+        DateRangePicker_MonthGrid: 'Months in {0}',
     };
 
     /*
@@ -104,6 +110,13 @@
         shortTimePattern: 'HH:mm',
         amDesignator: 'AM',
         pmDesignator: 'PM',
+        /*
+         * Thirteen entries, the last empty — the shape a real organisation
+         * handed over on 2026-10-29 (.NET's thirteen-month calendar). German,
+         * so a control that fell back to its own English names shows it.
+         */
+        monthNames: ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember', ''],
+        abbreviatedMonthNames: ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez', ''],
     };
 
     var SECURITY = {
@@ -261,6 +274,35 @@
         duration: 'show',
         /** The quick-range rail, as the maker's raw text. */
         presets: 'today,last7,thisMonth',
+        /*
+         * 0.4.0's three inputs, as a form hands them over when the maker set
+         * nothing: `raw: null` for each — measured on a form configured before
+         * they existed, **the Enum included**, which arrives `null` rather than
+         * as its declared default `org`. `undefined` leaves the parameter out
+         * of the bag entirely, a host built against the 0.3.x manifest.
+         */
+        minDays: null,
+        maxDays: null,
+        fiscalYearStart: null,
+        /*
+         * The organisation's `fiscalcalendarstart`, as its Web API answers —
+         * an instant, because the column is UserLocal behind a Date Only
+         * format (measured 2026-10-29: `'2022-04-01T10:59:00Z'` for 1 April).
+         */
+        fiscalStart: '2022-01-01T10:59:00Z',
+        /*
+         * `true` answers `retrieveMultipleRecords('organization', …)` from
+         * `fiscalStart`; `'fails'` rejects in the platform's fault shape;
+         * `false` is a host with no `webAPI` at all. A canvas app here has
+         * none either way. `webApiCalls`, an array, records each call.
+         */
+        webAPI: true,
+        webApiCalls: null,
+        /*
+         * Milliseconds before the organisation read answers. A real read takes
+         * a round trip, and a fiscal range has to show that it is waiting.
+         */
+        webApiDelay: 0,
         /** Security, per column — they are independent. */
         startSecurity: 'none',
         endSecurity: 'none',
@@ -458,6 +500,35 @@
                 duration: { raw: o.duration, type: 'Enum' },
                 time: { raw: o.time, type: 'Enum' },
                 presets: { raw: o.presets, type: 'SingleLine.Text' },
+                minDays: o.minDays === undefined ? undefined : { raw: o.minDays, type: o.minDays === null ? null : 'Whole.None' },
+                maxDays: o.maxDays === undefined ? undefined : { raw: o.maxDays, type: o.maxDays === null ? null : 'Whole.None' },
+                fiscalYearStart: o.fiscalYearStart === undefined ? undefined : { raw: o.fiscalYearStart, type: o.fiscalYearStart === null ? null : 'Enum' },
+            },
+
+            webAPI: canvas || o.webAPI === false ? undefined : {
+                retrieveMultipleRecords: function (entity, query) {
+                    if (o.webApiCalls) {
+                        o.webApiCalls.push({ entity: entity, query: query });
+                    }
+
+                    var answer = o.webAPI === 'fails'
+                        ? Promise.reject({ errorCode: 2147868673, message: 'Principal user is missing prvReadOrganization privilege.', code: 2147868673 })
+                        : Promise.resolve({
+                            entities: entity === 'organization'
+                                ? [{
+                                    '@odata.etag': 'W/"35598348"',
+                                    organizationid: '8f6aad40-3287-441f-8fe6-c359b272470d',
+                                    fiscalcalendarstart: o.fiscalStart,
+                                }]
+                                : [],
+                        });
+
+                    return o.webApiDelay > 0
+                        ? new Promise(function (resolve, reject) {
+                            setTimeout(function () { answer.then(resolve, reject); }, o.webApiDelay);
+                        })
+                        : answer;
+                },
             },
 
             mode: {

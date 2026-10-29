@@ -74,6 +74,9 @@ them takes a plain value and can be set in the **Advanced** pane:
 | Duration | `duration` | `"show"` or `"hide"` (optional, defaults to show) |
 | Time of day | `time` | `"show"` to offer a time beside each date; `"auto"` (the default) means whole days in a canvas app, where there is no column to follow |
 | Quick ranges | `presets` | `"today,last7,last30,thisMonth,next7,next30"` (optional) |
+| Earliest, in days from today | `minDays` | `-30` (optional): a canvas formula can also set **Earliest date** directly |
+| Latest, in days from today | `maxDays` | `90` (optional) |
+| Fiscal year starts in | `fiscalYearStart` | `"apr"` for the fiscal ranges: a canvas app cannot read the organisation's setting, so `"org"` means January here |
 
 ### 4. Write the changes back
 

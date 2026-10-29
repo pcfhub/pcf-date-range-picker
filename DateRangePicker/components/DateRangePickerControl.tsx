@@ -20,7 +20,7 @@ import {
     validateRange,
     withTime,
 } from '../range';
-import { CalendarLocale, PresetToken } from '../calendar';
+import { CalendarLocale, Preset } from '../calendar';
 import { PresetRail } from './PresetRail';
 import { RangeCalendar } from './RangeCalendar';
 import { useCloseWhenHidden } from '../lib/close-when-hidden/useCloseWhenHidden';
@@ -46,7 +46,14 @@ export interface IProps {
     label: string;
     isRTL: boolean;
     showDuration: boolean;
-    presets: PresetToken[];
+    presets: Preset[];
+    /**
+     * The month the fiscal ranges count from, January 0 — or `null` while the
+     * organisation's setting is still being read, which is what
+     * `fiscalPending` resolves with.
+     */
+    fiscalMonth: number | null;
+    fiscalPending: Promise<number> | null;
     locale: CalendarLocale;
     today: Date;
     theme: Theme | undefined;
@@ -95,6 +102,31 @@ export function DateRangePickerControl(props: IProps): React.ReactElement | null
      * the grid paints the preview and the committed pair is untouched.
      */
     const [anchor, setAnchor] = React.useState<Date | null>(null);
+
+    /*
+     * The organisation's fiscal start, once its one read answers. A virtual
+     * control has no way to ask the platform for another `updateView`, so the
+     * answer lands here as state. The promise is the same object on every
+     * render (fiscal.ts reads once per Web API), so this effect waits on it
+     * once and every later render finds the month already set.
+     */
+    const [readFiscalMonth, setReadFiscalMonth] = React.useState<number | null>(null);
+
+    React.useEffect(() => {
+        let live = true;
+
+        props.fiscalPending?.then((month) => {
+            if (live) {
+                setReadFiscalMonth(month);
+            }
+        });
+
+        return (): void => {
+            live = false;
+        };
+    }, [props.fiscalPending]);
+
+    const fiscalMonth = props.fiscalMonth ?? readFiscalMonth;
 
     /*
      * The field, held as state rather than a ref because the popover is
@@ -415,7 +447,8 @@ export function DateRangePickerControl(props: IProps): React.ReactElement | null
                 >
                     <div className="DateRangePicker-popover-body">
                         <PresetRail
-                            tokens={props.presets}
+                            presets={props.presets}
+                            fiscalMonth={fiscalMonth}
                             start={start}
                             end={end}
                             today={props.today}

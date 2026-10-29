@@ -1,8 +1,13 @@
 import * as React from 'react';
-import { CalendarLocale, PresetToken, matchesPreset, resolvePreset } from '../calendar';
+import { CalendarLocale, Preset, isFiscal, matchesPreset, resolvePreset } from '../calendar';
 
 export interface IPresetRailProps {
-    tokens: PresetToken[];
+    presets: Preset[];
+    /**
+     * The month the fiscal ranges count from, or `null` while the
+     * organisation's setting is still being read.
+     */
+    fiscalMonth: number | null;
     start: Date | null;
     end: Date | null;
     today: Date;
@@ -10,6 +15,20 @@ export interface IPresetRailProps {
     disabled: boolean;
     text: (key: string) => string;
     onPick: (start: Date, end: Date) => void;
+}
+
+/**
+ * The button's words. A named range has its own string; a counted one uses
+ * the string for its own count where one exists — `last7`, `last30`, `next7`
+ * and `next30` kept theirs from 0.3.x, translations included — and the
+ * template "Last {0} days" for any other.
+ */
+function labelOf(preset: Preset, text: (key: string) => string): string {
+    if (preset.kind === 'named' || preset.days === 7 || preset.days === 30) {
+        return text(`Preset_${preset.token}`);
+    }
+
+    return text(preset.kind === 'last' ? 'Preset_lastN' : 'Preset_nextN').replace('{0}', String(preset.days));
 }
 
 /**
@@ -25,33 +44,46 @@ export interface IPresetRailProps {
  * A preset is pressed when the current pair *is* that range, so the rail
  * doubles as a read-out: a maker who set the columns to the calendar month sees
  * "This month" lit without having clicked it.
+ *
+ * A fiscal range waits for the organisation's fiscal start: until the read
+ * answers it is `aria-disabled` and pressed never, and a press does nothing.
+ * Not `disabled` — a keyboard user resting on it while it waits would be
+ * blurred when it is (pcf-review's busy-button line).
  */
 export function PresetRail(props: IPresetRailProps): React.ReactElement | null {
-    if (props.tokens.length === 0) {
+    if (props.presets.length === 0) {
         return null;
     }
 
     return (
         <div className="DateRangePicker-presets">
             <div className="DateRangePicker-presets-heading">{props.text('QuickRanges')}</div>
-            {props.tokens.map((token) => {
-                const pressed = matchesPreset(token, props.start, props.end, props.today, props.locale);
+            {props.presets.map((preset) => {
+                const waiting = isFiscal(preset) && props.fiscalMonth === null;
+                const month = props.fiscalMonth ?? 0;
+                const pressed = !waiting && matchesPreset(preset, props.start, props.end, props.today, props.locale, month);
 
                 return (
                     <button
-                        key={token}
+                        key={preset.token}
                         type="button"
                         className={`DateRangePicker-preset${pressed ? ' is-selected' : ''}`}
-                        data-preset={token}
+                        data-preset={preset.token}
                         aria-pressed={pressed}
+                        aria-disabled={waiting || undefined}
+                        aria-busy={waiting || undefined}
                         disabled={props.disabled}
                         onClick={(): void => {
-                            const range = resolvePreset(token, props.today, props.locale);
+                            if (waiting) {
+                                return;
+                            }
+
+                            const range = resolvePreset(preset, props.today, props.locale, month);
 
                             props.onPick(range.start, range.end);
                         }}
                     >
-                        {props.text(`Preset_${token}`)}
+                        {labelOf(preset, props.text)}
                     </button>
                 );
             })}

@@ -48,6 +48,24 @@ range genuinely is two columns, and this is how you say which one holds the end.
   day names, and every date shown is formatted by the platform rather than by the
   browser — so the calendar agrees with the rest of the form.
 
+## The fiscal year
+
+The fiscal quick ranges (**This fiscal year**, **Last fiscal quarter**, …)
+count from the organisation's **Fiscal Year Settings** when **Fiscal year starts
+in** is left on *Organization setting*. That is the default, and it is also
+what a control placed before 0.4.0 gets.
+
+- **One Web API request, only when needed.** The control reads the start month
+  from the organisation row once, and only when a fiscal range is listed in
+  **Quick ranges**. Until the answer arrives the fiscal ranges are shown
+  waiting.
+- **The month is the user's.** The organisation's fiscal start is stored as a
+  moment, not a day, so the control reads its month in the user's own timezone,
+  the way the settings page shows it.
+- **If the read is refused, January.** Every user can normally read the
+  organisation row. If yours cannot, or to make the start explicit, pick the
+  month in **Fiscal year starts in**.
+
 :::callout{type=info}
 The control is localised into English, Spanish, French, German and Japanese. The
 language follows the user's own setting; there is nothing to configure per form.

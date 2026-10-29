@@ -193,6 +193,45 @@ export function isSameDay(a: Date, b: Date): boolean {
     return dayNumber(a) === dayNumber(b);
 }
 
+/**
+ * The bounds in force today: the static `minDate`/`maxDate` and the rolling
+ * `minDays`/`maxDays` (days from today, signed), the tighter of each pair.
+ *
+ * A rolling bound is what a model-driven maker could not say before 0.4.0:
+ * `minDate` is a fixed day set at configuration time, so "nothing before 30
+ * days ago" needed a business rule. With both set, the later minimum and the
+ * earlier maximum win — the maker asked for both, and a day has to satisfy
+ * both to be offered. Days only, from `today`'s calendar day: the same "today"
+ * the quick ranges and the calendar's highlight use, the browser's.
+ *
+ * Measured on the form on 29 October 2026: `-30` in the form XML arrives as
+ * the number `-30`, and an unset Whole input as `null` — which is "no bound",
+ * not zero. Anything that is not a finite number is treated the same way.
+ */
+export function effectiveBounds(
+    minDate: Date | null,
+    maxDate: Date | null,
+    minDays: number | null,
+    maxDays: number | null,
+    today: Date,
+): { min: Date | null; max: Date | null } {
+    const day = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const relative = (days: number | null): Date | null =>
+        typeof days === 'number' && Number.isFinite(days)
+            ? new Date(day.getFullYear(), day.getMonth(), day.getDate() + Math.trunc(days))
+            : null;
+
+    const rollingMin = relative(minDays);
+    const rollingMax = relative(maxDays);
+
+    const later = (a: Date | null, b: Date | null): Date | null =>
+        a === null ? b : b === null ? a : dayNumber(a) >= dayNumber(b) ? a : b;
+    const earlier = (a: Date | null, b: Date | null): Date | null =>
+        a === null ? b : b === null ? a : dayNumber(a) <= dayNumber(b) ? a : b;
+
+    return { min: later(minDate, rollingMin), max: earlier(maxDate, rollingMax) };
+}
+
 export interface RangeRules {
     allowSameDay: boolean;
     min: Date | null;

@@ -37,6 +37,15 @@ export interface CalendarLocale {
     shortTimePattern: string;
     amDesignator: string;
     pmDesignator: string;
+    /**
+     * January first, twelve of them — for the month-and-year view. Measured on
+     * a real organisation on 29 October 2026: `monthNames` and
+     * `abbreviatedMonthNames` both arrive with **thirteen** entries, the last
+     * an empty string, which is .NET's shape for a thirteen-month calendar.
+     * Read as the first twelve, and only when all twelve are there.
+     */
+    monthNames: string[];
+    abbreviatedMonthNames: string[];
 }
 
 /**
@@ -53,7 +62,20 @@ export const FALLBACK_LOCALE: CalendarLocale = {
     shortTimePattern: 'h:mm tt',
     amDesignator: 'AM',
     pmDesignator: 'PM',
+    monthNames: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+    abbreviatedMonthNames: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
 };
+
+/** The first twelve of a month-name array, or `null` unless all twelve are non-empty strings. */
+function twelveMonths(value: unknown): string[] | null {
+    if (!Array.isArray(value) || value.length < 12) {
+        return null;
+    }
+
+    const twelve = value.slice(0, 12);
+
+    return twelve.every((name) => typeof name === 'string' && name.length > 0) ? (twelve as string[]) : null;
+}
 
 /**
  * Reads a locale off whatever the host supplied, field by field.
@@ -88,6 +110,8 @@ export function toCalendarLocale(info: unknown): CalendarLocale {
             typeof source.amDesignator === 'string' ? source.amDesignator : FALLBACK_LOCALE.amDesignator,
         pmDesignator:
             typeof source.pmDesignator === 'string' ? source.pmDesignator : FALLBACK_LOCALE.pmDesignator,
+        monthNames: twelveMonths(source.monthNames) ?? FALLBACK_LOCALE.monthNames,
+        abbreviatedMonthNames: twelveMonths(source.abbreviatedMonthNames) ?? FALLBACK_LOCALE.abbreviatedMonthNames,
     };
 }
 
@@ -370,6 +394,38 @@ export function moveFocus(view: CalendarView, next: Date, months: 1 | 2 = 2): Ca
     return { leftMonth, focusDay: next, pointed: next };
 }
 
+/**
+ * Jump the window to a month picked from the month-and-year view.
+ *
+ * The month lands on the left, and the focused day comes with it on the same
+ * day of the month (clamped: 31 January jumped to February is the 28th or
+ * 29th), so the arrow keys carry on inside the month the user chose. Like
+ * `pageWindow`, and for the same reason, `pointed` stays where it was: the
+ * user moved the window, not the pointer, so a half-made selection paints
+ * nothing new until they point again.
+ */
+export function jumpTo(view: CalendarView, month: Date): CalendarView {
+    const first = startOfMonth(month);
+    const last = endOfMonth(first).getDate();
+
+    return {
+        leftMonth: first,
+        focusDay: new Date(first.getFullYear(), first.getMonth(), Math.min(view.focusDay.getDate(), last)),
+        pointed: view.pointed,
+    };
+}
+
+/**
+ * Whether any day of `month` can be picked under these bounds — the
+ * month-and-year view disables a month only when every day in it is out.
+ */
+export function monthSelectable(month: Date, min: Date | null, max: Date | null): boolean {
+    return (
+        (min === null || dayNumber(endOfMonth(month)) >= dayNumber(min))
+        && (max === null || dayNumber(startOfMonth(month)) <= dayNumber(max))
+    );
+}
+
 /** Point at a day, or stop pointing at one. Nothing else moves. */
 export function pointAt(view: CalendarView, date: Date | null): CalendarView {
     return { ...view, pointed: date };
@@ -396,124 +452,235 @@ export function rangeToPaint(
     return { start: anchor, end: view.pointed ?? anchor };
 }
 
+
 /**
- * The quick ranges, in the order they are offered.
+ * The named quick ranges, and where the counted ones (`last<N>`, `next<N>`)
+ * sit among them — the order they are offered in.
  *
- * Past- and future-facing tokens both, because the same control records a
- * booking window and reports on a period already elapsed. The maker chooses
- * which of them appear; this list is only what a token is allowed to be.
+ * Past- and future-facing both, because the same control records a booking
+ * window and reports on a period already elapsed. The maker chooses which
+ * appear; this list is only what a token is allowed to be, and the order.
+ *
+ * The ten 0.3.x tokens keep their order relative to each other, so a rail a
+ * maker configured before 0.4.0 looks exactly as it did. `last7`, `last30`,
+ * `next7` and `next30` are no longer names of their own: they are the counted
+ * forms at 7 and 30, sorted by their count inside the `lastN` / `nextN` slot.
  */
-export const PRESET_TOKENS = [
+const ORDER = [
     'today',
     'thisWeek',
-    'last7',
-    'last30',
+    'lastWeek',
+    'lastN',
+    'monthToDate',
     'thisMonth',
     'lastMonth',
+    'quarterToDate',
+    'thisQuarter',
+    'lastQuarter',
+    'yearToDate',
     'thisYear',
-    'next7',
-    'next30',
+    'lastYear',
+    'fiscalYearToDate',
+    'thisFiscalQuarter',
+    'lastFiscalQuarter',
+    'thisFiscalYear',
+    'lastFiscalYear',
+    'nextWeek',
+    'nextN',
     'nextMonth',
+    'nextQuarter',
 ] as const;
 
-export type PresetToken = (typeof PRESET_TOKENS)[number];
+export type NamedPreset = Exclude<(typeof ORDER)[number], 'lastN' | 'nextN'>;
+
+const NAMED = new Set<string>(ORDER.filter((token) => token !== 'lastN' && token !== 'nextN'));
+
+/** Ranges that count from the fiscal year, and so need its first month. */
+const FISCAL = new Set<string>(['fiscalYearToDate', 'thisFiscalQuarter', 'lastFiscalQuarter', 'thisFiscalYear', 'lastFiscalYear']);
+
+/** A counted range is at most a year and a day long — long enough for "last 365", short enough to catch a typo. */
+export const MAX_COUNTED_DAYS = 366;
+
+/**
+ * One quick range: a named one, or a counted one — `last<N>` is today and the
+ * N−1 days before it, `next<N>` today and the N−1 after. `token` is what the
+ * maker wrote, normalised, and is what the rail keys and labels by.
+ */
+export type Preset =
+    | { kind: 'named'; token: NamedPreset }
+    | { kind: 'last'; token: string; days: number }
+    | { kind: 'next'; token: string; days: number };
+
+/** Whether this range counts from the fiscal year. */
+export function isFiscal(preset: Preset): boolean {
+    return preset.kind === 'named' && FISCAL.has(preset.token);
+}
+
+function sortKey(preset: Preset): number {
+    const slot = preset.kind === 'named' ? preset.token : preset.kind === 'last' ? 'lastN' : 'nextN';
+
+    return ORDER.indexOf(slot as (typeof ORDER)[number]) * 1000 + (preset.kind === 'named' ? 0 : preset.days);
+}
 
 /**
  * The maker's list, cleaned up.
  *
  * Unknown tokens are dropped rather than thrown: the property is text, a canvas
  * formula can put anything in it, and a typo should cost one button rather than
- * the control. Duplicates collapse, and the declared order is preserved rather
- * than the maker's, so two configurations of the same set look the same.
+ * the control. So is a count outside 1–366. Duplicates collapse, and the
+ * canonical order above is kept rather than the maker's, so two configurations
+ * of the same set look the same.
  */
-export function parsePresets(raw: string | null): PresetToken[] {
+export function parsePresets(raw: string | null): Preset[] {
     if (raw === null) {
         return [];
     }
 
-    const asked = new Set(
-        raw
-            .split(',')
-            .map((token) => token.trim())
-            .filter((token) => token !== ''),
-    );
+    const seen = new Set<string>();
+    const presets: Preset[] = [];
 
-    return PRESET_TOKENS.filter((token) => asked.has(token));
+    for (const written of raw.split(',').map((token) => token.trim()).filter((token) => token !== '')) {
+        const counted = /^(last|next)(\d{1,3})$/.exec(written);
+        let preset: Preset | null = null;
+
+        if (counted !== null) {
+            const days = Number(counted[2]);
+
+            if (days >= 1 && days <= MAX_COUNTED_DAYS) {
+                preset = counted[1] === 'last'
+                    ? { kind: 'last', token: `last${days}`, days }
+                    : { kind: 'next', token: `next${days}`, days };
+            }
+        } else if (NAMED.has(written)) {
+            preset = { kind: 'named', token: written as NamedPreset };
+        }
+
+        if (preset !== null && !seen.has(preset.token)) {
+            seen.add(preset.token);
+            presets.push(preset);
+        }
+    }
+
+    return presets.sort((a, b) => sortKey(a) - sortKey(b));
+}
+
+/** The span of `months` whole months from `start`, inclusive of its last day. */
+function months(start: Date, count: number): { start: Date; end: Date } {
+    return { start, end: addDays(addMonths(start, count), -1) };
+}
+
+/** The first day of the quarter `day` falls in, quarters starting in `firstMonth` (0–11). */
+function quarterStart(day: Date, firstMonth: number): Date {
+    const offset = (day.getMonth() - firstMonth + 12) % 12;
+
+    return new Date(day.getFullYear(), day.getMonth() - (offset % 3), 1);
+}
+
+/** The first day of the fiscal year `day` falls in. */
+function fiscalYearStart(day: Date, firstMonth: number): Date {
+    return new Date(day.getMonth() >= firstMonth ? day.getFullYear() : day.getFullYear() - 1, firstMonth, 1);
 }
 
 /**
- * A token to the pair it means, relative to `today`.
+ * A preset to the pair it means, relative to `today`.
  *
  * `today` is a parameter rather than `new Date()` so the caller decides what
  * "now" is — which is what lets the smoke suite assert these at all, and what
  * keeps a control rendered at 23:59 from disagreeing with itself a minute
- * later.
+ * later. `fiscalMonth` is the month the fiscal year starts in, 0 for January;
+ * only the five fiscal ranges read it.
  *
  * Every range is inclusive of both ends, because that is what the duration line
  * and the columns mean: "last 7 days" is today and the six before it, not today
- * and the seven before it.
+ * and the seven before it. A "to date" range ends today.
  */
 export function resolvePreset(
-    token: PresetToken,
+    preset: Preset,
     today: Date,
     locale: CalendarLocale,
+    fiscalMonth = 0,
 ): { start: Date; end: Date } {
     const day = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-    switch (token) {
+    if (preset.kind === 'last') {
+        return { start: addDays(day, -(preset.days - 1)), end: day };
+    }
+
+    if (preset.kind === 'next') {
+        return { start: day, end: addDays(day, preset.days - 1) };
+    }
+
+    const week = startOfWeek(day, locale);
+    const quarter = quarterStart(day, 0);
+    const fiscalYear = fiscalYearStart(day, fiscalMonth);
+    const fiscalQuarter = quarterStart(day, fiscalMonth);
+
+    switch (preset.token) {
         case 'today':
             return { start: day, end: day };
-        case 'thisWeek': {
-            const from = startOfWeek(day, locale);
-
-            return { start: from, end: addDays(from, 6) };
-        }
-        case 'last7':
-            return { start: addDays(day, -6), end: day };
-        case 'last30':
-            return { start: addDays(day, -29), end: day };
+        case 'thisWeek':
+            return { start: week, end: addDays(week, 6) };
+        case 'lastWeek':
+            return { start: addDays(week, -7), end: addDays(week, -1) };
+        case 'nextWeek':
+            return { start: addDays(week, 7), end: addDays(week, 13) };
+        case 'monthToDate':
+            return { start: startOfMonth(day), end: day };
         case 'thisMonth':
             return { start: startOfMonth(day), end: endOfMonth(day) };
-        case 'lastMonth': {
-            const previous = addMonths(startOfMonth(day), -1);
-
-            return { start: previous, end: endOfMonth(previous) };
-        }
+        case 'lastMonth':
+            return months(addMonths(startOfMonth(day), -1), 1);
+        case 'nextMonth':
+            return months(addMonths(startOfMonth(day), 1), 1);
+        case 'quarterToDate':
+            return { start: quarter, end: day };
+        case 'thisQuarter':
+            return months(quarter, 3);
+        case 'lastQuarter':
+            return months(addMonths(quarter, -3), 3);
+        case 'nextQuarter':
+            return months(addMonths(quarter, 3), 3);
+        case 'yearToDate':
+            return { start: new Date(day.getFullYear(), 0, 1), end: day };
         case 'thisYear':
-            return {
-                start: new Date(day.getFullYear(), 0, 1),
-                end: new Date(day.getFullYear(), 11, 31),
-            };
-        case 'next7':
-            return { start: day, end: addDays(day, 6) };
-        case 'next30':
-            return { start: day, end: addDays(day, 29) };
-        case 'nextMonth': {
-            const next = addMonths(startOfMonth(day), 1);
+            return { start: new Date(day.getFullYear(), 0, 1), end: new Date(day.getFullYear(), 11, 31) };
+        case 'lastYear':
+            return { start: new Date(day.getFullYear() - 1, 0, 1), end: new Date(day.getFullYear() - 1, 11, 31) };
+        case 'fiscalYearToDate':
+            return { start: fiscalYear, end: day };
+        case 'thisFiscalYear':
+            return months(fiscalYear, 12);
+        case 'lastFiscalYear':
+            return months(addMonths(fiscalYear, -12), 12);
+        case 'thisFiscalQuarter':
+            return months(fiscalQuarter, 3);
+        case 'lastFiscalQuarter':
+            return months(addMonths(fiscalQuarter, -3), 3);
+        default: {
+            // Unreachable through `parsePresets`, which filters against ORDER.
+            // `never` here makes a token added there without a case here fail
+            // to compile rather than at runtime.
+            const unreachable: never = preset;
 
-            return { start: next, end: endOfMonth(next) };
+            return unreachable;
         }
-        default:
-            // Unreachable through `parsePresets`, which filters against the same
-            // list. Present so adding a token to PRESET_TOKENS without teaching
-            // this function about it fails to compile rather than at runtime.
-            return { start: day, end: day };
     }
 }
 
-/** Whether a pair is exactly what a token would produce, for `aria-pressed`. */
+/** Whether a pair is exactly what a preset would produce, for `aria-pressed`. */
 export function matchesPreset(
-    token: PresetToken,
+    preset: Preset,
     start: Date | null,
     end: Date | null,
     today: Date,
     locale: CalendarLocale,
+    fiscalMonth = 0,
 ): boolean {
     if (start === null || end === null) {
         return false;
     }
 
-    const preset = resolvePreset(token, today, locale);
+    const range = resolvePreset(preset, today, locale, fiscalMonth);
 
-    return isSameDay(preset.start, start) && isSameDay(preset.end, end);
+    return isSameDay(range.start, start) && isSameDay(range.end, end);
 }

@@ -58,12 +58,42 @@ rather than reporting an error. `EndBeforeStart` is therefore reachable only by
 typing a date into the **From** or **To** field inside the popover.
 
 **Quick ranges are inclusive of both ends.** `last7` is today and the six days
-before it, so the duration line reads seven days rather than eight. `presets`
-takes a comma-separated list of `today`, `thisWeek`, `last7`, `last30`,
-`thisMonth`, `lastMonth`, `thisYear`, `next7`, `next30` and `nextMonth`; tokens
-outside that list are ignored, and an empty list hides the rail. The order shown
-is the order above rather than the order typed, so two configurations of the
-same set look the same.
+before it, so the duration line reads seven days rather than eight; a *to date*
+range ends today. `presets` takes a comma-separated list of these tokens:
+
+| Kind | Tokens |
+| --- | --- |
+| Days | `today`, and `lastN` / `nextN` for any N from 1 to 366: `last7`, `last30`, `last90`, `next14`, … |
+| Weeks | `thisWeek`, `lastWeek`, `nextWeek`, starting on the organisation's first day of the week |
+| Months | `thisMonth`, `lastMonth`, `nextMonth`, `monthToDate` |
+| Quarters | `thisQuarter`, `lastQuarter`, `nextQuarter`, `quarterToDate`, calendar quarters |
+| Years | `thisYear`, `lastYear`, `yearToDate` |
+| Fiscal | `thisFiscalYear`, `lastFiscalYear`, `fiscalYearToDate`, `thisFiscalQuarter`, `lastFiscalQuarter`, counted from `fiscalYearStart` |
+
+Tokens outside that list are ignored, and an empty list hides the rail. The
+order shown is the order of the table, not the order typed, so two
+configurations of the same set look the same. A rail configured before 0.4.0
+looks exactly as it did.
+
+**`fiscalYearStart` says where the fiscal ranges count from.** A month (`jan`
+… `dec`) is used as it is. `org`, the default, reads the start month from the
+organisation's **Fiscal Year Settings**. That takes one Web API request, made
+only when a fiscal range is listed, and the month is read in the user's
+timezone. Until the answer arrives, a fiscal range is shown waiting. In a
+canvas app, in the hub's demo, or if the read is refused, the fiscal year
+starts in January. Fiscal quarters are three-month blocks from that month.
+
+**`minDays` and `maxDays` are bounds that move with today.** Days from today,
+signed: `-30` is thirty days ago, `0` today, `90` ninety days ahead. With a
+fixed `minDate` or `maxDate` as well, the tighter of each pair applies. Days
+outside the bounds are disabled in the calendar, and a typed date outside them
+is refused with the same message as a fixed bound. "Today" is the device's
+day, the same one the quick ranges and the calendar's highlight use.
+
+**The month heading jumps.** The left month's name is a button that opens a
+year with its twelve months. Pick one, or use the arrow keys, Page Up and Page
+Down for the year, and Enter. Escape goes back to the days. Months with no day
+inside the bounds are disabled.
 
 **`sameDay` and `duration` are choices, not switches.** Both default to the
 useful value — `allow` and `show`. They replaced two yes/no properties in 0.2.0

@@ -350,6 +350,12 @@
     color: var(--colorNeutralForegroundDisabled, #bdbdbd);
 }
 
+/* A fiscal range waiting for the organisation's fiscal start. */
+.DateRangePicker-popover .DateRangePicker-preset[aria-disabled="true"] {
+    cursor: progress;
+    color: var(--colorNeutralForegroundDisabled, #bdbdbd);
+}
+
 .DateRangePicker-popover .DateRangePicker-calendar {
     position: relative;
 }
@@ -404,6 +410,105 @@
     line-height: 28px;
     font-weight: var(--fontWeightSemibold, 600);
     text-align: center;
+}
+
+/*
+ * The left heading is a button that opens the month-and-year view, drawn as
+ * the heading it replaces plus the subtle hover every other button here has.
+ * It sits under the month arrows' overlay, which takes no pointer events
+ * outside its own two buttons, so a click on the name reaches it.
+ */
+.DateRangePicker-popover .DateRangePicker-month-jump {
+    display: block;
+    margin: 0 auto;
+    padding: 0 var(--spacingHorizontalS, 8px);
+    border: none;
+    border-radius: var(--borderRadiusMedium, 4px);
+    background-color: transparent;
+    font: inherit;
+    font-weight: var(--fontWeightSemibold, 600);
+    color: inherit;
+    cursor: pointer;
+}
+
+.DateRangePicker-popover .DateRangePicker-month-jump:hover:not(:disabled) {
+    background-color: var(--colorSubtleBackgroundHover, #f5f5f5);
+}
+
+.DateRangePicker-popover .DateRangePicker-month-jump:disabled {
+    cursor: default;
+}
+
+/*
+ * The month-and-year view takes the day grids' place and their size — a
+ * header row and the six weeks under it come to 248px, and two months side by
+ * side to 464px — so the popover does not change shape when it opens.
+ */
+.DateRangePicker-popover .DateRangePicker-calendar--picking {
+    display: flex;
+    flex-direction: column;
+    min-width: 224px;
+    min-height: 248px;
+}
+
+.DateRangePicker-popover .DateRangePicker-calendar--picking.is-two {
+    min-width: 464px;
+}
+
+.DateRangePicker-popover .DateRangePicker-picker-year {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 28px;
+}
+
+.DateRangePicker-popover .DateRangePicker-picker-year-label {
+    font-weight: var(--fontWeightSemibold, 600);
+}
+
+.DateRangePicker-popover .DateRangePicker-picker-grid {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-rows: repeat(4, 1fr);
+    gap: var(--spacingVerticalXS, 4px);
+    padding-top: var(--spacingVerticalS, 8px);
+}
+
+.DateRangePicker-popover .DateRangePicker-picker-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacingHorizontalXS, 4px);
+}
+
+.DateRangePicker-popover .DateRangePicker-picker-cell {
+    display: flex;
+}
+
+.DateRangePicker-popover .DateRangePicker-picker-month {
+    flex: 1 1 auto;
+    min-height: 40px;
+    border: 1px solid transparent;
+    border-radius: var(--borderRadiusMedium, 4px);
+    background-color: transparent;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+
+.DateRangePicker-popover .DateRangePicker-picker-month:hover:not(:disabled) {
+    background-color: var(--colorSubtleBackgroundHover, #f5f5f5);
+}
+
+/* The month on screen: a border as well as a tint, for forced colours. */
+.DateRangePicker-popover .DateRangePicker-picker-month.is-current {
+    border-color: var(--colorBrandStroke1, #0f6cbd);
+    background-color: var(--colorBrandBackground2, #ebf3fc);
+    font-weight: var(--fontWeightSemibold, 600);
+}
+
+.DateRangePicker-popover .DateRangePicker-picker-month:disabled {
+    cursor: default;
+    color: var(--colorNeutralForegroundDisabled, #bdbdbd);
 }
 
 .DateRangePicker-popover .DateRangePicker-week {
@@ -501,6 +606,8 @@
 .DateRangePicker-popover .DateRangePicker-day:focus-visible,
 .DateRangePicker-popover .DateRangePicker-preset:focus-visible,
 .DateRangePicker-popover .DateRangePicker-nav-button:focus-visible,
+.DateRangePicker-popover .DateRangePicker-month-jump:focus-visible,
+.DateRangePicker-popover .DateRangePicker-picker-month:focus-visible,
 .DateRangePicker-popover .DateRangePicker-action:focus-visible {
     outline: 2px solid var(--colorStrokeFocus2, #000000);
     outline-offset: -2px;
