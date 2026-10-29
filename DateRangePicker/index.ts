@@ -2,6 +2,7 @@ import * as React from 'react';
 import { IInputs, IOutputs } from './generated/ManifestTypes';
 import { DateRangePickerControl, IProps } from './components/DateRangePickerControl';
 import { formatTimeOfDay, parsePresets, toCalendarLocale } from './calendar';
+import { probe } from './probe';
 import {
     ColumnShape,
     OffsetFor,
@@ -92,6 +93,8 @@ export class DateRangePicker implements ComponentFramework.ReactControl<IInputs,
     }
 
     public updateView(context: ComponentFramework.Context<IInputs>): React.ReactElement {
+        probe(context);
+
         const start = context.parameters.startDate;
         const end = context.parameters.endDate;
 

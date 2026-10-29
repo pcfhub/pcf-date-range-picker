@@ -7,7 +7,7 @@
   -->
   <control namespace="PCFHub"
            constructor="DateRangePicker"
-           version="0.3.4"
+           version="0.3.9"
            display-name-key="DateRangePicker_Name"
            description-key="DateRangePicker_Desc"
            control-type="virtual">
@@ -173,6 +173,42 @@
               required="false"
               default-value="today,last7,last30,thisMonth,next7,next30" />
 
+    <property name="minDays"
+              display-name-key="minDays_Name"
+              description-key="minDays_Desc"
+              of-type="Whole.None"
+              usage="input"
+              required="false" />
+
+    <property name="maxDays"
+              display-name-key="maxDays_Name"
+              description-key="maxDays_Desc"
+              of-type="Whole.None"
+              usage="input"
+              required="false" />
+
+    <property name="fiscalYearStart"
+              display-name-key="fiscalYearStart_Name"
+              description-key="fiscalYearStart_Desc"
+              of-type="Enum"
+              usage="input"
+              required="false"
+              default-value="org">
+      <value name="org" display-name-key="fiscalYearStart_Org">org</value>
+      <value name="jan" display-name-key="fiscalYearStart_Jan">jan</value>
+      <value name="feb" display-name-key="fiscalYearStart_Feb">feb</value>
+      <value name="mar" display-name-key="fiscalYearStart_Mar">mar</value>
+      <value name="apr" display-name-key="fiscalYearStart_Apr">apr</value>
+      <value name="may" display-name-key="fiscalYearStart_May">may</value>
+      <value name="jun" display-name-key="fiscalYearStart_Jun">jun</value>
+      <value name="jul" display-name-key="fiscalYearStart_Jul">jul</value>
+      <value name="aug" display-name-key="fiscalYearStart_Aug">aug</value>
+      <value name="sep" display-name-key="fiscalYearStart_Sep">sep</value>
+      <value name="oct" display-name-key="fiscalYearStart_Oct">oct</value>
+      <value name="nov" display-name-key="fiscalYearStart_Nov">nov</value>
+      <value name="dec" display-name-key="fiscalYearStart_Dec">dec</value>
+    </property>
+
     <resources>
       <code path="index.ts" order="1" />
       <css path="css/DateRangePicker.css" order="1" />
@@ -186,8 +222,13 @@
     </resources>
 
     <!--
-      No <feature-usage>: the control reads context.mode, context.userSettings,
-      context.formatting and context.resources, none of which are gated.
+      WebAPI, not required: the one read is the organisation's fiscal year
+      start, asked only when a fiscal quick range is listed and
+      fiscalYearStart is `org`. Without it — canvas, the hub's demo, a host
+      that answers nothing — the fiscal year starts in January.
     -->
+    <feature-usage>
+      <uses-feature name="WebAPI" required="false" />
+    </feature-usage>
   </control>
 </manifest>

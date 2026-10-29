@@ -126,7 +126,7 @@
     <value>Intervalos rápidos</value>
   </data>
   <data name="presets_Desc" xml:space="preserve">
-    <value>Atajos que se ofrecen, separados por comas: today, thisWeek, last7, last30, thisMonth, lastMonth, thisYear, next7, next30, nextMonth. Déjelo vacío para no mostrar ninguno.</value>
+    <value>Atajos separados por comas: today, thisWeek, lastWeek, nextWeek, last7, last30, next7, next30 (or any lastN / nextN up to 366), thisMonth, lastMonth, nextMonth, monthToDate, thisQuarter, lastQuarter, nextQuarter, quarterToDate, thisYear, lastYear, yearToDate, thisFiscalQuarter, lastFiscalQuarter, thisFiscalYear, lastFiscalYear, fiscalYearToDate. Déjelo vacío para ninguno.</value>
   </data>
   <data name="DateRangePicker_StartLabel" xml:space="preserve">
     <value>Desde</value>
@@ -250,5 +250,122 @@
   </data>
   <data name="DateRangePicker_ElapsedMinutes" xml:space="preserve">
     <value>{0} min</value>
+  </data>
+  <data name="minDays_Name" xml:space="preserve">
+    <value>Mínimo, en días desde hoy</value>
+  </data>
+  <data name="minDays_Desc" xml:space="preserve">
+    <value>El primer día que se puede elegir, contado desde hoy: -30 es hace 30 días, 0 es hoy. Se combina con «Fecha mínima»; gana la más tardía de las dos. Vacío para ningún límite.</value>
+  </data>
+  <data name="maxDays_Name" xml:space="preserve">
+    <value>Máximo, en días desde hoy</value>
+  </data>
+  <data name="maxDays_Desc" xml:space="preserve">
+    <value>El último día que se puede elegir, contado desde hoy: 90 es dentro de 90 días. Se combina con «Fecha máxima»; gana la más temprana de las dos. Vacío para ningún límite.</value>
+  </data>
+  <data name="fiscalYearStart_Name" xml:space="preserve">
+    <value>El año fiscal empieza en</value>
+  </data>
+  <data name="fiscalYearStart_Desc" xml:space="preserve">
+    <value>El mes desde el que cuentan los intervalos fiscales. «Configuración de la organización» lo lee de la configuración del año fiscal en un formulario controlado por modelos; en otros casos, enero.</value>
+  </data>
+  <data name="fiscalYearStart_Org" xml:space="preserve">
+    <value>Configuración de la organización</value>
+  </data>
+  <data name="DateRangePicker_Preset_lastWeek" xml:space="preserve">
+    <value>Semana pasada</value>
+  </data>
+  <data name="DateRangePicker_Preset_nextWeek" xml:space="preserve">
+    <value>Semana próxima</value>
+  </data>
+  <data name="DateRangePicker_Preset_thisQuarter" xml:space="preserve">
+    <value>Este trimestre</value>
+  </data>
+  <data name="DateRangePicker_Preset_lastQuarter" xml:space="preserve">
+    <value>Trimestre pasado</value>
+  </data>
+  <data name="DateRangePicker_Preset_nextQuarter" xml:space="preserve">
+    <value>Próximo trimestre</value>
+  </data>
+  <data name="DateRangePicker_Preset_lastYear" xml:space="preserve">
+    <value>Año pasado</value>
+  </data>
+  <data name="DateRangePicker_Preset_monthToDate" xml:space="preserve">
+    <value>Mes hasta hoy</value>
+  </data>
+  <data name="DateRangePicker_Preset_quarterToDate" xml:space="preserve">
+    <value>Trimestre hasta hoy</value>
+  </data>
+  <data name="DateRangePicker_Preset_yearToDate" xml:space="preserve">
+    <value>Año hasta hoy</value>
+  </data>
+  <data name="DateRangePicker_Preset_thisFiscalQuarter" xml:space="preserve">
+    <value>Este trimestre fiscal</value>
+  </data>
+  <data name="DateRangePicker_Preset_lastFiscalQuarter" xml:space="preserve">
+    <value>Trimestre fiscal pasado</value>
+  </data>
+  <data name="DateRangePicker_Preset_thisFiscalYear" xml:space="preserve">
+    <value>Este año fiscal</value>
+  </data>
+  <data name="DateRangePicker_Preset_lastFiscalYear" xml:space="preserve">
+    <value>Año fiscal pasado</value>
+  </data>
+  <data name="DateRangePicker_Preset_fiscalYearToDate" xml:space="preserve">
+    <value>Año fiscal hasta hoy</value>
+  </data>
+  <data name="DateRangePicker_Preset_lastN" xml:space="preserve">
+    <value>Últimos {0} días</value>
+  </data>
+  <data name="DateRangePicker_Preset_nextN" xml:space="preserve">
+    <value>Próximos {0} días</value>
+  </data>
+  <data name="DateRangePicker_ChooseMonth" xml:space="preserve">
+    <value>Elegir mes y año, {0}</value>
+  </data>
+  <data name="DateRangePicker_PreviousYear" xml:space="preserve">
+    <value>Año anterior</value>
+  </data>
+  <data name="DateRangePicker_NextYear" xml:space="preserve">
+    <value>Año siguiente</value>
+  </data>
+  <data name="DateRangePicker_MonthGrid" xml:space="preserve">
+    <value>Meses de {0}</value>
+  </data>
+  <data name="fiscalYearStart_Jan" xml:space="preserve">
+    <value>enero</value>
+  </data>
+  <data name="fiscalYearStart_Feb" xml:space="preserve">
+    <value>febrero</value>
+  </data>
+  <data name="fiscalYearStart_Mar" xml:space="preserve">
+    <value>marzo</value>
+  </data>
+  <data name="fiscalYearStart_Apr" xml:space="preserve">
+    <value>abril</value>
+  </data>
+  <data name="fiscalYearStart_May" xml:space="preserve">
+    <value>mayo</value>
+  </data>
+  <data name="fiscalYearStart_Jun" xml:space="preserve">
+    <value>junio</value>
+  </data>
+  <data name="fiscalYearStart_Jul" xml:space="preserve">
+    <value>julio</value>
+  </data>
+  <data name="fiscalYearStart_Aug" xml:space="preserve">
+    <value>agosto</value>
+  </data>
+  <data name="fiscalYearStart_Sep" xml:space="preserve">
+    <value>septiembre</value>
+  </data>
+  <data name="fiscalYearStart_Oct" xml:space="preserve">
+    <value>octubre</value>
+  </data>
+  <data name="fiscalYearStart_Nov" xml:space="preserve">
+    <value>noviembre</value>
+  </data>
+  <data name="fiscalYearStart_Dec" xml:space="preserve">
+    <value>diciembre</value>
   </data>
 </root>

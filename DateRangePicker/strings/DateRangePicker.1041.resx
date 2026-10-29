@@ -126,7 +126,7 @@
     <value>クイック範囲</value>
   </data>
   <data name="presets_Desc" xml:space="preserve">
-    <value>表示するショートカットをコンマ区切りで指定します: today、thisWeek、last7、last30、thisMonth、lastMonth、thisYear、next7、next30、nextMonth。空にすると表示しません。</value>
+    <value>表示するショートカット（コンマ区切り）: today, thisWeek, lastWeek, nextWeek, last7, last30, next7, next30 (or any lastN / nextN up to 366), thisMonth, lastMonth, nextMonth, monthToDate, thisQuarter, lastQuarter, nextQuarter, quarterToDate, thisYear, lastYear, yearToDate, thisFiscalQuarter, lastFiscalQuarter, thisFiscalYear, lastFiscalYear, fiscalYearToDate。空欄にすると表示しません。</value>
   </data>
   <data name="DateRangePicker_StartLabel" xml:space="preserve">
     <value>開始</value>
@@ -250,5 +250,122 @@
   </data>
   <data name="DateRangePicker_ElapsedMinutes" xml:space="preserve">
     <value>{0} 分</value>
+  </data>
+  <data name="minDays_Name" xml:space="preserve">
+    <value>最も早い日（今日からの日数）</value>
+  </data>
+  <data name="minDays_Desc" xml:space="preserve">
+    <value>選択できる最も早い日を今日からの日数で指定します。-30 は 30 日前、0 は今日です。「最も早い日付」と組み合わされ、遅い方が適用されます。空欄で制限なし。</value>
+  </data>
+  <data name="maxDays_Name" xml:space="preserve">
+    <value>最も遅い日（今日からの日数）</value>
+  </data>
+  <data name="maxDays_Desc" xml:space="preserve">
+    <value>選択できる最も遅い日を今日からの日数で指定します。90 は 90 日後です。「最も遅い日付」と組み合わされ、早い方が適用されます。空欄で制限なし。</value>
+  </data>
+  <data name="fiscalYearStart_Name" xml:space="preserve">
+    <value>会計年度の開始月</value>
+  </data>
+  <data name="fiscalYearStart_Desc" xml:space="preserve">
+    <value>会計年度のクイック範囲を数える開始月です。「組織の設定」はモデル駆動型フォームで会計年度の設定から読み取り、それ以外では 1 月を使います。</value>
+  </data>
+  <data name="fiscalYearStart_Org" xml:space="preserve">
+    <value>組織の設定</value>
+  </data>
+  <data name="DateRangePicker_Preset_lastWeek" xml:space="preserve">
+    <value>先週</value>
+  </data>
+  <data name="DateRangePicker_Preset_nextWeek" xml:space="preserve">
+    <value>来週</value>
+  </data>
+  <data name="DateRangePicker_Preset_thisQuarter" xml:space="preserve">
+    <value>今四半期</value>
+  </data>
+  <data name="DateRangePicker_Preset_lastQuarter" xml:space="preserve">
+    <value>前四半期</value>
+  </data>
+  <data name="DateRangePicker_Preset_nextQuarter" xml:space="preserve">
+    <value>次四半期</value>
+  </data>
+  <data name="DateRangePicker_Preset_lastYear" xml:space="preserve">
+    <value>昨年</value>
+  </data>
+  <data name="DateRangePicker_Preset_monthToDate" xml:space="preserve">
+    <value>今月（今日まで）</value>
+  </data>
+  <data name="DateRangePicker_Preset_quarterToDate" xml:space="preserve">
+    <value>今四半期（今日まで）</value>
+  </data>
+  <data name="DateRangePicker_Preset_yearToDate" xml:space="preserve">
+    <value>今年（今日まで）</value>
+  </data>
+  <data name="DateRangePicker_Preset_thisFiscalQuarter" xml:space="preserve">
+    <value>今会計四半期</value>
+  </data>
+  <data name="DateRangePicker_Preset_lastFiscalQuarter" xml:space="preserve">
+    <value>前会計四半期</value>
+  </data>
+  <data name="DateRangePicker_Preset_thisFiscalYear" xml:space="preserve">
+    <value>今会計年度</value>
+  </data>
+  <data name="DateRangePicker_Preset_lastFiscalYear" xml:space="preserve">
+    <value>前会計年度</value>
+  </data>
+  <data name="DateRangePicker_Preset_fiscalYearToDate" xml:space="preserve">
+    <value>今会計年度（今日まで）</value>
+  </data>
+  <data name="DateRangePicker_Preset_lastN" xml:space="preserve">
+    <value>過去 {0} 日間</value>
+  </data>
+  <data name="DateRangePicker_Preset_nextN" xml:space="preserve">
+    <value>今後 {0} 日間</value>
+  </data>
+  <data name="DateRangePicker_ChooseMonth" xml:space="preserve">
+    <value>月と年を選択、{0}</value>
+  </data>
+  <data name="DateRangePicker_PreviousYear" xml:space="preserve">
+    <value>前の年</value>
+  </data>
+  <data name="DateRangePicker_NextYear" xml:space="preserve">
+    <value>次の年</value>
+  </data>
+  <data name="DateRangePicker_MonthGrid" xml:space="preserve">
+    <value>{0} の月</value>
+  </data>
+  <data name="fiscalYearStart_Jan" xml:space="preserve">
+    <value>1 月</value>
+  </data>
+  <data name="fiscalYearStart_Feb" xml:space="preserve">
+    <value>2 月</value>
+  </data>
+  <data name="fiscalYearStart_Mar" xml:space="preserve">
+    <value>3 月</value>
+  </data>
+  <data name="fiscalYearStart_Apr" xml:space="preserve">
+    <value>4 月</value>
+  </data>
+  <data name="fiscalYearStart_May" xml:space="preserve">
+    <value>5 月</value>
+  </data>
+  <data name="fiscalYearStart_Jun" xml:space="preserve">
+    <value>6 月</value>
+  </data>
+  <data name="fiscalYearStart_Jul" xml:space="preserve">
+    <value>7 月</value>
+  </data>
+  <data name="fiscalYearStart_Aug" xml:space="preserve">
+    <value>8 月</value>
+  </data>
+  <data name="fiscalYearStart_Sep" xml:space="preserve">
+    <value>9 月</value>
+  </data>
+  <data name="fiscalYearStart_Oct" xml:space="preserve">
+    <value>10 月</value>
+  </data>
+  <data name="fiscalYearStart_Nov" xml:space="preserve">
+    <value>11 月</value>
+  </data>
+  <data name="fiscalYearStart_Dec" xml:space="preserve">
+    <value>12 月</value>
   </data>
 </root>
